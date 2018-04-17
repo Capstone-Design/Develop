@@ -5,63 +5,65 @@
 
 
 // ----- public
-
-void Sensors::Init(int count, ...){
-  Sensor::sensorCount = count;
-  Sensor::sensors = new VL53L0X[sensorCount];
-  Sensor::sensorXshutPins = new int[sensorCount];
-
-  int num;
+Sensors::Sensors(){}
+Sensors::Sensors(int count, ...){
+  Sensors::sensorCount = count;
+  Sensors::sensors = new VL53L0X[count];
+  Sensors::sensorXshutPins = new int[count];
+  
   va_list l_Arg;
   va_start(l_Arg,count);
-  for (int i = 0; i < sensorCount; i++)
+  for (int i = 0; i < count; i++)
   {
-    Sensor::sensorXshutPins[i] = va_arg(l_Arg, int);
+    Sensors::sensorXshutPins[i] = va_arg(l_Arg, int);
   }
   va_end(l_Arg);
-  Sensor::DisableAllSensor();
+  Sensors::DisableAllSensor();
   Wire.begin();
-  for (int i = 0; i < sensorCount; i++)
+  for (int i = 0; i < count; i++)
   {
-    Sensor::SetSensor(i);
+    Sensors::SetSensor(i);
   }
 }
 
-int Sensor::GetDistance(){
-  int count = Sensor::sensorCount;
-  int sum = 0, fineValue = 0;
-  for(int i=0; i< count; i++){
-    distance[count] = Sensor::sensors[count].readRangeContinuousMillimeters();
-    if (!Sensor::sensors[count].timeoutOccurred()) {
-      sum += distance[count];
+int Sensors::GetDistance(){
+  int count = Sensors::sensorCount;
+  int distance;
+  int sum = 0;
+  int fineValue = 0;
+  for(int i=0; i< count; i++, distance = 0){
+    distance = Sensors::sensors[i].readRangeContinuousMillimeters();
+    if (!Sensors::sensors[i].timeoutOccurred() && distance < DISTANCE_THRESHOLD) {
+      sum += distance;
       fineValue++;
     }
   }
+  // check fineValue == 0;
   return sum/fineValue;
 }
 
-void Sensors::SendDistance(HardwareSerial &refSerial, String id, String distance){
+void Sensors::SendDistance(HardwareSerial *refSerial, String id, String distance){
   //sensor,[arduino id]:[distance]\n
-  refSerial.print("distance,");
-  refSerial.print(id);
-  refSerial.print(":");
-  refSerial.println(distance);
+  refSerial->print("distance,");
+  refSerial->print(id);
+  refSerial->print(":");
+  refSerial->println(distance);
 }
 
 // ----- private
 
 void Sensors::DisableAllSensor(){
-  for(int i=0; i< Sensor::sensorCount; i++){
+  for(int i=0; i< Sensors::sensorCount; i++){
     pinMode(sensorXshutPins[i], OUTPUT);
     digitalWrite(sensorXshutPins[i], LOW);
   }
 }
 
-void Sensor::SetSensor(int num){
-  digitalWrite(sensorXshutPins[num], HIGH); //begin writing to XSHUT of first laser
+void Sensors::SetSensor(int num){
+  digitalWrite(Sensors::sensorXshutPins[num], HIGH); //begin writing to XSHUT of first laser
   delay(50); //delay for xshut apply
-  Sensor::sensors[num].init();
-  Sensor::sensors[num].setMeasurementTimingBudget(20000);
-  Sensor::sensors[num].setAddress(0x21+num);
-  Sensor::sensors[num].startContinuous();
+  Sensors::sensors[num].init();
+  Sensors::sensors[num].setMeasurementTimingBudget(20000);
+  Sensors::sensors[num].setAddress(0x21+num);
+  Sensors::sensors[num].startContinuous();
 }

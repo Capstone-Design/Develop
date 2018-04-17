@@ -9,7 +9,7 @@ class BlunoBLE{
     // void Connected();
     // void Disconnected();
   private:
-    HardwareSerial &refSerial;
-}
+    HardwareSerial *mySerial;
+};
 
 #endif

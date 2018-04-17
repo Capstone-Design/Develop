@@ -1,15 +1,16 @@
 #include "Arduino.h"
-
+#include "Battery.h"
 
 // ----- public
-Battery::Battery(int maximum, int minimum, int cap, int arduinoId = -1){
+Battery::Battery(){};
+Battery::Battery(int maximum, int minimum, int cap){
   Battery::maximumVoltage = maximum;
   Battery::minimumVoltage = minimum;
   Battery::capacity = cap;
-  Battery::arduinoId = arduinoId;
+  Battery::RefreshPercentage();
 }
 
-int Battery::RefreshPercentage(HardwareSerial &mySerial = NULL){
+int Battery::RefreshPercentage(HardwareSerial *mySerial = NULL, String id = ""){
   int maximumV = Battery::maximumVoltage;
   int minimumV = Battery::minimumVoltage;
   int capacity = Battery::capacity;
@@ -21,18 +22,18 @@ int Battery::RefreshPercentage(HardwareSerial &mySerial = NULL){
   if(Battery::percentage != newPercentage){
     Battery::percentage = newPercentage;
     if(mySerial != NULL){
-      Battery::SendBattery(mySerial, Battery::arduinoId);
+      Battery::SendBattery(mySerial, id);
     }
   }
   return Battery::percentage;
 }
 
-void Battery::SendBattery(HardwareSerial &mySerial, String id){
+void Battery::SendBattery(HardwareSerial *mySerial, String id){
   //batt,[arduino id]:[percentage]\n
-  refSerial.print("distance,");
-  refSerial.print(id);
-  refSerial.print(":");
-  refSerial.println(distance);
+  mySerial->print("batt,");
+  mySerial->print(id);
+  mySerial->print(":");
+  mySerial->println(Battery::ReadVcc());
 }
 
 // ----- private
@@ -49,4 +50,3 @@ int Battery::ReadVcc(/*Seems need Wire*/){
   return (int)result;
 }
 
-#endif
