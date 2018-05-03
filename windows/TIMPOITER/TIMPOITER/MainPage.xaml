@@ -7,7 +7,22 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
+
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-        <Button Content="터치입력" HorizontalAlignment="Left" Height="100" Margin="300,300,0,0" VerticalAlignment="Top" Width="552" Click="Button_Click" BorderBrush="#FFC81616"/>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" MinHeight="70"/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+
+        <Button Content="터치입력" HorizontalAlignment="Left" Height="100" Margin="723,548,0,-648" VerticalAlignment="Top" Width="552" Click="Button_Click" BorderBrush="#FFC81616" Grid.Row="1"/>
+        <SplitView HorizontalAlignment="Left" Height="920" Margin="0,80,0,-1000" Grid.RowSpan="2" VerticalAlignment="Top" Width="1500">
+            <SplitView.Pane>
+                <RelativePanel HorizontalAlignment="Left" Height="910" VerticalAlignment="Top" Width="370"/>
+                
+            </SplitView.Pane>
+            
+               
+            
+        </SplitView>
     </Grid>
 </Page>

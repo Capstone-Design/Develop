@@ -1,11 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="rescap uap mp ">
+  IgnorableNamespaces="uap mp rescap">
 
   <Identity
     Name="f9e32ad7-c08a-43c4-8170-15ed5ad9b5b9"
@@ -46,7 +45,6 @@
 
   <Capabilities>
     <Capability Name="internetClient" />
-	<rescap:Capability Name="inputInjectionBrokered" />
-
+    <rescap:Capability Name="inputInjectionBrokered" />
   </Capabilities>
 </Package>
