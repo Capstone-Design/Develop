@@ -6,4 +6,7 @@
     </DebugEngines>
     <DeployOptionalPackages>false</DeployOptionalPackages>
   </PropertyGroup>
+  <PropertyGroup>
+    <ProjectView>ShowAllFiles</ProjectView>
+  </PropertyGroup>
 </Project>
