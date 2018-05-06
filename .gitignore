@@ -1,0 +1,6 @@
+windows/**/node_modules/
+windows/**/.vs/
+windows/**/Release/
+windows/**/Debug/
+windows/**/x64/
+**/package-lock.json
