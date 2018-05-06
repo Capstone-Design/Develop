@@ -1,5 +1,4 @@
 ﻿
-using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -27,12 +26,14 @@ namespace TIMPOITER
     {
         public static MainPage Current;
 
-        
+        private SettingValue aa = new SettingValue();
         public MainPage()
         {
             this.InitializeComponent();
             Current = this;
             SampleTitle.Text = FEATURE_NAME;
+            aa.GetResolution();
+            
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -71,6 +72,55 @@ namespace TIMPOITER
         {
             get { return this.scenarios; }
         }
+
+        //public void NotifyUser(string strMessage, NotifyType type)
+        //{
+        //    // If called from the UI thread, then update immediately.
+        //    // Otherwise, schedule a task on the UI thread to perform the update.
+        //    if (Dispatcher.HasThreadAccess)
+        //    {
+        //        UpdateStatus(strMessage, type);
+        //    }
+        //    else
+        //    {
+        //        var task = Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => UpdateStatus(strMessage, type));
+        //    }
+        //}
+
+        //private void UpdateStatus(string strMessage, NotifyType type)
+        //{
+        //    switch (type)
+        //    {
+        //        case NotifyType.StatusMessage:
+        //            StatusBorder.Background = new SolidColorBrush(Windows.UI.Colors.Green);
+        //            break;
+        //        case NotifyType.ErrorMessage:
+        //            StatusBorder.Background = new SolidColorBrush(Windows.UI.Colors.Red);
+        //            break;
+        //    }
+
+        //    StatusBlock.Text = strMessage;
+
+        //    // Collapse the StatusBlock if it has no text to conserve real estate.
+        //    StatusBorder.Visibility = (StatusBlock.Text != String.Empty) ? Visibility.Visible : Visibility.Collapsed;
+        //    if (StatusBlock.Text != String.Empty)
+        //    {
+        //        StatusBorder.Visibility = Visibility.Visible;
+        //        StatusPanel.Visibility = Visibility.Visible;
+        //    }
+        //    else
+        //    {
+        //        StatusBorder.Visibility = Visibility.Collapsed;
+        //        StatusPanel.Visibility = Visibility.Collapsed;
+        //    }
+
+        //    // Raise an event if necessary to enable a screen reader to announce the status update.
+        //    var peer = FrameworkElementAutomationPeer.FromElement(StatusBlock);
+        //    if (peer != null)
+        //    {
+        //        peer.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
+        //    }
+        //}
 
         async void Footer_Click(object sender, RoutedEventArgs e)
         {
@@ -178,23 +228,12 @@ namespace TIMPOITER
 
     public class SettingValue
     {
-        private static SettingValue instance;
-        private static int[] screensize = new int[2];
-        private static int[] resolution = new int[2];
-        private static double[] calibration = new double[2];
+
+        private int[] screensize = new int[2];
+        private int[] resolution = new int[2];
+        private double[] calibration = new double[2];
         //arduino = new [2];
         private int firstStart;
-
-        private SettingValue() { }
-
-        public static SettingValue GetInstance()
-        {
-            if(instance == null)
-            {
-                instance = new SettingValue();
-            }
-            return instance;
-        }
 
         //해상도가 변경되었을 때의 설정 변경
         public void ResolutionChanged()
@@ -210,11 +249,19 @@ namespace TIMPOITER
         }
 
         // 해상도 가져오기 및 저장 
-        public int[] GetResolution()
+        public Size GetResolution()
         {
-            resolution[0] = (int)DisplayInformation.GetForCurrentView().ScreenWidthInRawPixels;
-            resolution[1] = (int)DisplayInformation.GetForCurrentView().ScreenHeightInRawPixels;
-            return resolution;
+            var bounds = ApplicationView.GetForCurrentView().VisibleBounds;
+            var scaleFactor = DisplayInformation.GetForCurrentView().RawPixelsPerViewPixel;
+            var size = new Size(bounds.Width * scaleFactor, bounds.Height * scaleFactor);
+            resolution[0] = (int)size.Height;
+            resolution[1] = (int)size.Width;
+            TextBlock textBlock = new TextBlock();
+            textBlock.Text = resolution[0].ToString();
+            TextBlock textBlock2 = new TextBlock();
+            textBlock2.Text = resolution[1].ToString();
+
+            return size;
         }
 
         /*public int* GetBattery()

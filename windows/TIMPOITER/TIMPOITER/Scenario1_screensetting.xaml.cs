@@ -12,7 +12,6 @@ using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
-using Windows.Graphics.Display;
 
 // 빈 페이지 항목 템플릿에 대한 설명은 https://go.microsoft.com/fwlink/?LinkId=234238에 나와 있습니다.
 
@@ -27,9 +26,6 @@ namespace TIMPOITER
         public Scenario1_screensetting()
         {
             this.InitializeComponent();
-            SettingValue a = SettingValue.GetInstance();
-            TextBox_x.Text = a.GetResolution()[0].ToString();
-            TextBox_y.Text = a.GetResolution()[1].ToString();
         }
     }
 }
