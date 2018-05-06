@@ -17,10 +17,13 @@
             <TextBlock Text="Screan set:" />
             <TextBlock Text="resolution:"/>
             <TextBlock TextWrapping="Wrap">
-                hi 
+                hi
             </TextBlock>
-           
+
         </StackPanel>
-       
+        <TextBox x:Name="TextBox_x" HorizontalAlignment="Left" Margin="366,345,0,-377" Grid.RowSpan="2" Text="TextBox" VerticalAlignment="Top" Width="128"/>
+        <TextBlock HorizontalAlignment="Left" Margin="297,347,0,-367" Grid.RowSpan="2" Text="해상도 :" TextWrapping="Wrap" VerticalAlignment="Top"/>
+        <TextBox x:Name="TextBox_y" HorizontalAlignment="Left" Margin="521,345,0,-377" Grid.RowSpan="2" Text="TextBox" VerticalAlignment="Top"/>
+
     </Grid>
 </Page>
