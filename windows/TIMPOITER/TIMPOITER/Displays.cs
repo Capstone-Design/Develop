@@ -119,7 +119,7 @@ namespace TIMPOITER
         public BluetoothLEDeviceDisplay(DeviceInformation deviceInfoIn)
         {
             DeviceInformation = deviceInfoIn;
-            UpdateGlyphBitmapImage();
+            //UpdateGlyphBitmapImage();
         }
 
         public DeviceInformation DeviceInformation { get; private set; }
@@ -148,17 +148,17 @@ namespace TIMPOITER
             OnPropertyChanged("Properties");
             OnPropertyChanged("IsConnectable");
 
-            UpdateGlyphBitmapImage();
+            //UpdateGlyphBitmapImage();
         }
 
-        private async void UpdateGlyphBitmapImage()
-        {
-            DeviceThumbnail deviceThumbnail = await DeviceInformation.GetGlyphThumbnailAsync();
-            var glyphBitmapImage = new BitmapImage();
-            await glyphBitmapImage.SetSourceAsync(deviceThumbnail);
-            GlyphBitmapImage = glyphBitmapImage;
-            OnPropertyChanged("GlyphBitmapImage");
-        }
+        //private async void UpdateGlyphBitmapImage()
+        //{
+        //    DeviceThumbnail deviceThumbnail = await DeviceInformation.GetGlyphThumbnailAsync();
+        //    var glyphBitmapImage = new BitmapImage();
+        //    await glyphBitmapImage.SetSourceAsync(deviceThumbnail);
+        //    GlyphBitmapImage = glyphBitmapImage;
+        //    OnPropertyChanged("GlyphBitmapImage");
+        //}
 
         protected void OnPropertyChanged(string name)
         {

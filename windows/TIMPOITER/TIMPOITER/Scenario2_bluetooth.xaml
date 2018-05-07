@@ -18,9 +18,9 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*" MinWidth="100"/>
                 </Grid.ColumnDefinitions>
-                <Image Source="{x:Bind GlyphBitmapImage, Mode=OneWay}" Stretch="UniformToFill" Grid.Column="0" Height="40" Width="40" Margin="5" VerticalAlignment="Top"/>
+                <!--<Image Source="{x:Bind GlyphBitmapImage, Mode=OneWay}" Stretch="UniformToFill" Grid.Column="0" Height="40" Width="40" Margin="5" VerticalAlignment="Top"/>-->
                 <StackPanel Grid.Column="1" Margin="5">
-                    <TextBlock Style="{StaticResource ListItemTextStyle}" TextWrapping="WrapWholeWords">
+                    <TextBlock  TextWrapping="WrapWholeWords">
                         Name: <Run Text="{x:Bind Name, Mode=OneWay}" FontWeight="Bold"/>
                     </TextBlock>
                     <TextBlock>
