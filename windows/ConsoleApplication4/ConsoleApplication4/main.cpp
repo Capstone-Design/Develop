@@ -93,9 +93,16 @@ std::wstring formatBluetoothAddress(unsigned long long BluetoothAddress) {
 //}
 //
 
-concurrency::task<void> serviceCheck(unsigned long long bluetoothAddress) {
-	auto leDevice = co_await Bluetooth::BluetoothLEDevice::FromBluetoothAddressAsync(bluetoothAddress);
-	auto servicesResult = co_await leDevice.GetGattServicesForUuidAsync(serviceUUID);
+void serviceCheck(unsigned long long bluetoothAddress) {
+	auto leDevice = Bluetooth::BluetoothLEDevice::FromBluetoothAddressAsync(bluetoothAddress).get();
+	auto serviceResult = leDevice.GetGattServicesForUuidAsync(Bluetooth::BluetoothUuidHelper::FromShortId(TimpointerServiceUUID)).get();
+	//if (serviceResult.Status() == Bluetooth::GenericAttributeProfile::GattCommunicationStatus::Success) {
+		auto service = serviceResult.Services();
+	//}
+	//else {
+		//std::cout << "Getting service result fail" << std::endl;
+	//}
+		
 	//auto service = servicesResult->Services->GetAt(0);
 	//auto characteristicsResult = co_await service->GetCharacteristicsForUuidAsync(characteristicUUID);
 	//auto characteristic = characteristicsResult->Characteristics->GetAt(0);
