@@ -29,8 +29,7 @@ namespace TIMPOITER
     /// </summary>
     public sealed partial class Scenario2_bluetooth : Page
     {
-       // public ulong TimpointerServiceUUID = 0xdfb0;
-       // ulong TimpointerCharacteristicUUID = 0xdfb1;
+       
         private MainPage rootPage = MainPage.Current;
         private ObservableCollection<BluetoothLEDeviceDisplay> KnownDevices = new ObservableCollection<BluetoothLEDeviceDisplay>();
         private List<DeviceInformation> UnknownDevices = new List<DeviceInformation>();

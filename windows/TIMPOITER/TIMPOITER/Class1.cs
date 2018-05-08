@@ -14,7 +14,7 @@ namespace TIMPOITER
         {
             new Scenario() { Title="Screen Settting", ClassType=typeof(Scenario1_screensetting) },
             new Scenario() { Title="Bluetooth Setting", ClassType=typeof(Scenario2_bluetooth) },
-            //new Scenario() { Title="Server: Publish foreground", ClassType=typeof(Scenario3_ServerForeground) },
+            new Scenario() { Title="Bluetooth Advertisement", ClassType=typeof(Scenario3_bluetoothAdvertisement) },
         };
 
         public string SelectedBleDeviceId;
