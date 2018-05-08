@@ -26,32 +26,25 @@ Sensors::Sensors(int count, ...){
   }
 }
 
-int Sensors::GetDistance(){
+int Sensors::GetDistance(int sendsorNum){
   int count = Sensors::sensorCount;
-  int distance;
-  int sum = 0;
-  int fineValue = 0;
-  for(int i=0; i< count; i++, distance = 0){
-    distance = Sensors::sensors[i].readRangeContinuousMillimeters();
-    if (!Sensors::sensors[i].timeoutOccurred() && distance < DISTANCE_THRESHOLD) {
-      sum += distance;
-      fineValue++;
-    }
-  }
-  // check fineValue == 0;
-  return sum/fineValue;
+  int distance = Sensors::sensors[sendsorNum].readRangeContinuousMillimeters();
+  return distance;
 }
 
-void Sensors::SendDistance(HardwareSerial *refSerial, String id, String distance){
+void Sensors::SendDistance(HardwareSerial *refSerial, String id, int* distance){
   //sensor,[arduino id]:[distance]\n
   refSerial->print("distance,");
   refSerial->print(id);
   refSerial->print(":");
-  refSerial->println(distance);
+  for(int i = 0 ; i < Sensors::sensorCount-1; i++){
+    refSerial->print(distance[i]);  
+    refSerial->print(",");  
+  }
+  refSerial->println(distance[Sensors::sensorCount]);
 }
 
 // ----- private
-
 void Sensors::DisableAllSensor(){
   for(int i=0; i< Sensors::sensorCount; i++){
     pinMode(sensorXshutPins[i], OUTPUT);
