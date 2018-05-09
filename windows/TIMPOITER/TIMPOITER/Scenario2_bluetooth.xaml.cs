@@ -64,7 +64,7 @@ namespace TIMPOITER
             {
                 StopBleDeviceWatcher();
                 EnumerateButton.Content = "Start enumerating";
-                
+                Debug.WriteLine("Enumerating 시작");
             }
         }
 
