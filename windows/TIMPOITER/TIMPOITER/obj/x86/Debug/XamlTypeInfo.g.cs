@@ -56,7 +56,7 @@ namespace TIMPOITER.TIMPOITER_XamlTypeInfo
     /// <summary>
     /// Main class for providing metadata for the app or library
     /// </summary>
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Windows.UI.Xaml.Build.Tasks"," 10.0.16.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Windows.UI.Xaml.Build.Tasks"," 10.0.17.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     public sealed class XamlMetaDataProvider : global::Windows.UI.Xaml.Markup.IXamlMetadataProvider
     {
@@ -99,26 +99,29 @@ namespace TIMPOITER.TIMPOITER_XamlTypeInfo
         }
     }
 
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Windows.UI.Xaml.Build.Tasks"," 10.0.16.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Windows.UI.Xaml.Build.Tasks"," 10.0.17.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     internal partial class XamlTypeInfoProvider
     {
         public global::Windows.UI.Xaml.Markup.IXamlType GetXamlTypeByType(global::System.Type type)
         {
             global::Windows.UI.Xaml.Markup.IXamlType xamlType;
-            if (_xamlTypeCacheByType.TryGetValue(type, out xamlType))
-            {
-                return xamlType;
-            }
-            int typeIndex = LookupTypeIndexByType(type);
-            if(typeIndex != -1)
-            {
-                xamlType = CreateXamlType(typeIndex);
-            }
-            if (xamlType != null)
-            {
-                _xamlTypeCacheByName.Add(xamlType.FullName, xamlType);
-                _xamlTypeCacheByType.Add(xamlType.UnderlyingType, xamlType);
+            lock (_xamlTypeCacheByType) 
+            { 
+                if (_xamlTypeCacheByType.TryGetValue(type, out xamlType))
+                {
+                    return xamlType;
+                }
+                int typeIndex = LookupTypeIndexByType(type);
+                if(typeIndex != -1)
+                {
+                    xamlType = CreateXamlType(typeIndex);
+                }
+                if (xamlType != null)
+                {
+                    _xamlTypeCacheByName.Add(xamlType.FullName, xamlType);
+                    _xamlTypeCacheByType.Add(xamlType.UnderlyingType, xamlType);
+                }
             }
             return xamlType;
         }
@@ -130,19 +133,22 @@ namespace TIMPOITER.TIMPOITER_XamlTypeInfo
                 return null;
             }
             global::Windows.UI.Xaml.Markup.IXamlType xamlType;
-            if (_xamlTypeCacheByName.TryGetValue(typeName, out xamlType))
+            lock (_xamlTypeCacheByType)
             {
-                return xamlType;
-            }
-            int typeIndex = LookupTypeIndexByName(typeName);
-            if(typeIndex != -1)
-            {
-                xamlType = CreateXamlType(typeIndex);
-            }
-            if (xamlType != null)
-            {
-                _xamlTypeCacheByName.Add(xamlType.FullName, xamlType);
-                _xamlTypeCacheByType.Add(xamlType.UnderlyingType, xamlType);
+                if (_xamlTypeCacheByName.TryGetValue(typeName, out xamlType))
+                {
+                    return xamlType;
+                }
+                int typeIndex = LookupTypeIndexByName(typeName);
+                if(typeIndex != -1)
+                {
+                    xamlType = CreateXamlType(typeIndex);
+                }
+                if (xamlType != null)
+                {
+                    _xamlTypeCacheByName.Add(xamlType.FullName, xamlType);
+                    _xamlTypeCacheByType.Add(xamlType.UnderlyingType, xamlType);
+                }
             }
             return xamlType;
         }
@@ -154,14 +160,17 @@ namespace TIMPOITER.TIMPOITER_XamlTypeInfo
                 return null;
             }
             global::Windows.UI.Xaml.Markup.IXamlMember xamlMember;
-            if (_xamlMembers.TryGetValue(longMemberName, out xamlMember))
+            lock (_xamlMembers)
             {
-                return xamlMember;
-            }
-            xamlMember = CreateXamlMember(longMemberName);
-            if (xamlMember != null)
-            {
-                _xamlMembers.Add(longMemberName, xamlMember);
+                if (_xamlMembers.TryGetValue(longMemberName, out xamlMember))
+                {
+                    return xamlMember;
+                }
+                xamlMember = CreateXamlMember(longMemberName);
+                if (xamlMember != null)
+                {
+                    _xamlMembers.Add(longMemberName, xamlMember);
+                }
             }
             return xamlMember;
         }
@@ -180,7 +189,7 @@ namespace TIMPOITER.TIMPOITER_XamlTypeInfo
 
         private void InitTypeTables()
         {
-            _typeNameTable = new string[12];
+            _typeNameTable = new string[13];
             _typeNameTable[0] = "TIMPOITER.ScenarioBindingConverter";
             _typeNameTable[1] = "Object";
             _typeNameTable[2] = "TIMPOITER.MainPage";
@@ -190,11 +199,12 @@ namespace TIMPOITER.TIMPOITER_XamlTypeInfo
             _typeNameTable[6] = "TIMPOITER.Scenario";
             _typeNameTable[7] = "String";
             _typeNameTable[8] = "System.Type";
-            _typeNameTable[9] = "System.Reflection.MemberInfo";
-            _typeNameTable[10] = "TIMPOITER.Scenario1_screensetting";
+            _typeNameTable[9] = "TIMPOITER.Scenario1_screensetting";
+            _typeNameTable[10] = "TIMPOITER.InvertConverter";
             _typeNameTable[11] = "TIMPOITER.Scenario2_bluetooth";
+            _typeNameTable[12] = "TIMPOITER.Scenario3_bluetoothAdvertisement";
 
-            _typeTable = new global::System.Type[12];
+            _typeTable = new global::System.Type[13];
             _typeTable[0] = typeof(global::TIMPOITER.ScenarioBindingConverter);
             _typeTable[1] = typeof(global::System.Object);
             _typeTable[2] = typeof(global::TIMPOITER.MainPage);
@@ -204,9 +214,10 @@ namespace TIMPOITER.TIMPOITER_XamlTypeInfo
             _typeTable[6] = typeof(global::TIMPOITER.Scenario);
             _typeTable[7] = typeof(global::System.String);
             _typeTable[8] = typeof(global::System.Type);
-            _typeTable[9] = typeof(global::System.Reflection.MemberInfo);
-            _typeTable[10] = typeof(global::TIMPOITER.Scenario1_screensetting);
+            _typeTable[9] = typeof(global::TIMPOITER.Scenario1_screensetting);
+            _typeTable[10] = typeof(global::TIMPOITER.InvertConverter);
             _typeTable[11] = typeof(global::TIMPOITER.Scenario2_bluetooth);
+            _typeTable[12] = typeof(global::TIMPOITER.Scenario3_bluetoothAdvertisement);
         }
 
         private int LookupTypeIndexByName(string typeName)
@@ -245,8 +256,10 @@ namespace TIMPOITER.TIMPOITER_XamlTypeInfo
         private object Activate_2_MainPage() { return new global::TIMPOITER.MainPage(); }
         private object Activate_5_List() { return new global::System.Collections.Generic.List<global::TIMPOITER.Scenario>(); }
         private object Activate_6_Scenario() { return new global::TIMPOITER.Scenario(); }
-        private object Activate_10_Scenario1_screensetting() { return new global::TIMPOITER.Scenario1_screensetting(); }
+        private object Activate_9_Scenario1_screensetting() { return new global::TIMPOITER.Scenario1_screensetting(); }
+        private object Activate_10_InvertConverter() { return new global::TIMPOITER.InvertConverter(); }
         private object Activate_11_Scenario2_bluetooth() { return new global::TIMPOITER.Scenario2_bluetooth(); }
+        private object Activate_12_Scenario3_bluetoothAdvertisement() { return new global::TIMPOITER.Scenario3_bluetoothAdvertisement(); }
         private void VectorAdd_5_List(object instance, object item)
         {
             var collection = (global::System.Collections.Generic.ICollection<global::TIMPOITER.Scenario>)instance;
@@ -312,19 +325,21 @@ namespace TIMPOITER.TIMPOITER_XamlTypeInfo
                 break;
 
             case 8:   //  System.Type
-                userType = new global::TIMPOITER.TIMPOITER_XamlTypeInfo.XamlUserType(this, typeName, type, GetXamlTypeByName("System.Reflection.MemberInfo"));
+                userType = new global::TIMPOITER.TIMPOITER_XamlTypeInfo.XamlUserType(this, typeName, type, GetXamlTypeByName("Object"));
                 userType.SetIsReturnTypeStub();
                 xamlType = userType;
                 break;
 
-            case 9:   //  System.Reflection.MemberInfo
-                userType = new global::TIMPOITER.TIMPOITER_XamlTypeInfo.XamlUserType(this, typeName, type, GetXamlTypeByName("Object"));
+            case 9:   //  TIMPOITER.Scenario1_screensetting
+                userType = new global::TIMPOITER.TIMPOITER_XamlTypeInfo.XamlUserType(this, typeName, type, GetXamlTypeByName("Windows.UI.Xaml.Controls.Page"));
+                userType.Activator = Activate_9_Scenario1_screensetting;
+                userType.SetIsLocalType();
                 xamlType = userType;
                 break;
 
-            case 10:   //  TIMPOITER.Scenario1_screensetting
-                userType = new global::TIMPOITER.TIMPOITER_XamlTypeInfo.XamlUserType(this, typeName, type, GetXamlTypeByName("Windows.UI.Xaml.Controls.Page"));
-                userType.Activator = Activate_10_Scenario1_screensetting;
+            case 10:   //  TIMPOITER.InvertConverter
+                userType = new global::TIMPOITER.TIMPOITER_XamlTypeInfo.XamlUserType(this, typeName, type, GetXamlTypeByName("Object"));
+                userType.Activator = Activate_10_InvertConverter;
                 userType.SetIsLocalType();
                 xamlType = userType;
                 break;
@@ -332,6 +347,13 @@ namespace TIMPOITER.TIMPOITER_XamlTypeInfo
             case 11:   //  TIMPOITER.Scenario2_bluetooth
                 userType = new global::TIMPOITER.TIMPOITER_XamlTypeInfo.XamlUserType(this, typeName, type, GetXamlTypeByName("Windows.UI.Xaml.Controls.Page"));
                 userType.Activator = Activate_11_Scenario2_bluetooth;
+                userType.SetIsLocalType();
+                xamlType = userType;
+                break;
+
+            case 12:   //  TIMPOITER.Scenario3_bluetoothAdvertisement
+                userType = new global::TIMPOITER.TIMPOITER_XamlTypeInfo.XamlUserType(this, typeName, type, GetXamlTypeByName("Windows.UI.Xaml.Controls.Page"));
+                userType.Activator = Activate_12_Scenario3_bluetoothAdvertisement;
                 userType.SetIsLocalType();
                 xamlType = userType;
                 break;
@@ -396,7 +418,7 @@ namespace TIMPOITER.TIMPOITER_XamlTypeInfo
         }
     }
 
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Windows.UI.Xaml.Build.Tasks"," 10.0.16.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Windows.UI.Xaml.Build.Tasks"," 10.0.17.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     internal class XamlSystemBaseType : global::Windows.UI.Xaml.Markup.IXamlType
     {
@@ -444,7 +466,7 @@ namespace TIMPOITER.TIMPOITER_XamlTypeInfo
     internal delegate void AddToDictionary(object instance, object key, object item);
     internal delegate object CreateFromStringMethod(string args);
 
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Windows.UI.Xaml.Build.Tasks"," 10.0.16.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Windows.UI.Xaml.Build.Tasks"," 10.0.17.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     internal class XamlUserType : global::TIMPOITER.TIMPOITER_XamlTypeInfo.XamlSystemBaseType
     {
@@ -655,7 +677,7 @@ namespace TIMPOITER.TIMPOITER_XamlTypeInfo
     internal delegate object Getter(object instance);
     internal delegate void Setter(object instance, object value);
 
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Windows.UI.Xaml.Build.Tasks"," 10.0.16.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.Windows.UI.Xaml.Build.Tasks"," 10.0.17.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     internal class XamlMember : global::Windows.UI.Xaml.Markup.IXamlMember
     {

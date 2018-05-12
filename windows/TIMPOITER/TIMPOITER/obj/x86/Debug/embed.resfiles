@@ -2,5 +2,6 @@ App.xbf
 MainPage.xbf
 Scenario1_screensetting.xbf
 Scenario2_bluetooth.xbf
+Scenario3_bluetoothAdvertisement.xbf
 Styles\Styles.xbf
 Themes\Generic.xbf

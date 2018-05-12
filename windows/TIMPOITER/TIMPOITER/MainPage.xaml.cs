@@ -1,5 +1,4 @@
 ﻿
-using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,12 +6,14 @@ using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Foundation.Metadata;
+using Windows.UI.Core.Preview;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
+using Windows.ApplicationModel;
 using Windows.UI.Xaml.Navigation;
 using Windows.UI.Input.Preview.Injection;
 using Windows.UI.ViewManagement;
@@ -33,6 +34,10 @@ namespace TIMPOITER
             this.InitializeComponent();
             Current = this;
             SampleTitle.Text = FEATURE_NAME;
+
+            SystemNavigationManagerPreview mgr =
+                SystemNavigationManagerPreview.GetForCurrentView();
+            mgr.CloseRequested += SystemNavigationManager_CloseRequested;
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -49,7 +54,17 @@ namespace TIMPOITER
             }
         }
 
-
+        private async void SystemNavigationManager_CloseRequested(object sender, SystemNavigationCloseRequestedPreviewEventArgs e)
+        {
+            Deferral deferral = e.GetDeferral();
+            
+            if (ApiInformation.IsApiContractPresent("Windows.ApplicationModel.FullTrustAppContract", 1, 0))
+            {
+                await FullTrustProcessLauncher.LaunchFullTrustProcessForCurrentAppAsync();
+            }
+            e.Handled = false;
+            deferral.Complete();
+        }
         private void ScenarioControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             // Clear the status block when navigating scenarios.
