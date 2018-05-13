@@ -28,22 +28,19 @@ namespace TIMPOITER
 
     public sealed partial class Scenario3_bluetoothAdvertisement : Page
     {
-        int first = 0;
-        Guid TimpointerServiceUUID = BluetoothUuidHelper.FromShortId(0xdfb0);
-        Guid TimpointerSerialCharacteristicUUID = BluetoothUuidHelper.FromShortId(0xdfb1);
-        Guid TimpointerATCharacteristicUUID = BluetoothUuidHelper.FromShortId(0xdfb2);
+        // Connect to HM-10 Default Ble
+        Guid TimpointerServiceUUID = BluetoothUuidHelper.FromShortId(0xffe0);
+        Guid TimpointerSerialCharacteristicUUID = BluetoothUuidHelper.FromShortId(0xffe1);
         private BluetoothLEAdvertisementWatcher watcher;
+        private GattCharacteristic characteristic;
         private MainPage rootPage;
 
         public Scenario3_bluetoothAdvertisement()
         {
-
-
             this.InitializeComponent();
 
             // Create and initialize a new watcher instance.
             watcher = new BluetoothLEAdvertisementWatcher();
-
             watcher.AdvertisementFilter.Advertisement.ServiceUuids.Add(TimpointerServiceUUID);
             watcher.SignalStrengthFilter.InRangeThresholdInDBm = -70;
             watcher.SignalStrengthFilter.OutOfRangeThresholdInDBm = -75;
@@ -116,17 +113,9 @@ namespace TIMPOITER
         {
             System.Diagnostics.Debug.WriteLine("Watcher Received");
             DateTimeOffset timestamp = eventArgs.Timestamp;
-
-
             BluetoothLEAdvertisementType advertisementType = eventArgs.AdvertisementType;
-
-
             Int16 rssi = eventArgs.RawSignalStrengthInDBm;
-
-
             string localName = eventArgs.Advertisement.LocalName;
-
-
             string manufacturerDataString = "";
             var manufacturerSections = eventArgs.Advertisement.ManufacturerData;
             if (manufacturerSections.Count > 0)
@@ -142,7 +131,6 @@ namespace TIMPOITER
                     BitConverter.ToString(data));
             }
 
-
             await this.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
             {
                 ReceivedAdvertisementListBox.Items.Add(string.Format("[{0}]: type={1}, rssi={2}, name={3}, manufacturerData=[{4}]",
@@ -153,89 +141,47 @@ namespace TIMPOITER
                     manufacturerDataString));
             });
 
+            // TODO filter by Blutooth name, connect with 2 device
+            watcher.Stop();
+            BluetoothLEDevice device = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);
 
-
-            //if (localName.Equals("Bluno"))
-            //{
-            if (first++ != 0)
+            GattDeviceServicesResult serviceResult = await device.GetGattServicesForUuidAsync(TimpointerServiceUUID);
+            if (serviceResult.Status == GattCommunicationStatus.Success)
             {
-
-
-                watcher.Stop();
-                BluetoothLEDevice device = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);
-                DeviceInformationCustomPairing customPairing = device.DeviceInformation.Pairing.Custom;
-                DevicePairingKinds ceremoniesSelected = DevicePairingKinds.None
-                                                        | DevicePairingKinds.ConfirmOnly
-                                                        | DevicePairingKinds.DisplayPin
-                                                        | DevicePairingKinds.ProvidePin
-                                                        | DevicePairingKinds.ConfirmPinMatch
-                                                        ;
-
-                //DevicePairingResult devicePairingResult = await customPairing.PairAsync(ceremoniesSelected);
-                //DevicePairingResult devicePairingResult = await device.DeviceInformation.Pairing.PairAsync(DevicePairingProtectionLevel.None);
-                System.Diagnostics.Debug.WriteLine("Try to Connect");
-                //System.Diagnostics.Debug.WriteLine(devicePairingResult.Status);
-
-                //if (!device.DeviceInformation.Pairing.IsPaired)
-                //{
-
-
-                GattDeviceServicesResult serviceResult = await device.GetGattServicesForUuidAsync(TimpointerServiceUUID);
-                if (serviceResult.Status == GattCommunicationStatus.Success)
+                GattCharacteristicsResult serialCharsticsResult = await serviceResult.Services.ElementAt(0).GetCharacteristicsForUuidAsync(TimpointerSerialCharacteristicUUID);
+                if (serialCharsticsResult.Status == GattCommunicationStatus.Success)
                 {
-                    GattCharacteristicsResult ATcharacteristicsResult = await serviceResult.Services.ElementAt(0).GetCharacteristicsForUuidAsync(TimpointerATCharacteristicUUID);
-                    GattCharacteristic ATCharacteristic = ATcharacteristicsResult.Characteristics.ElementAt(0);
-                    String mPassword = "AT+PASSWOR=DFRobot\r\n";
-                    String mBaudrateBuffer = "AT+CURRUART=115200\r\n";
-                    var dataWriter = new Windows.Storage.Streams.DataWriter();
-                    dataWriter.WriteString(mPassword);
-                    await ATCharacteristic.WriteValueAsync(dataWriter.DetachBuffer());
-                    dataWriter.WriteString(mBaudrateBuffer);
-                    await ATCharacteristic.WriteValueAsync(dataWriter.DetachBuffer());
-
-                    GattCharacteristicsResult serialCharsticsResult = await serviceResult.Services.ElementAt(0).GetCharacteristicsForUuidAsync(TimpointerSerialCharacteristicUUID);
-                    if (serialCharsticsResult.Status == GattCommunicationStatus.Success)
+                    characteristic = serialCharsticsResult.Characteristics.ElementAt(0);
+                    try
                     {
-                        GattCharacteristic characteristic = serialCharsticsResult.Characteristics.ElementAt(0);
-                        System.Diagnostics.Debug.WriteLine(characteristic.Uuid + " is found");
-
-                        //var descriptorResult = await characteristic.GetDescriptorsForUuidAsync(TimpointerSerialCharacteristicUUID);
-                        //GattDescriptor descriptor = descriptorResult.Descriptors[0];
-                        //byte[] setNotify = { 0x01, 0x00 };
-                        //await descriptor.WriteValueAsync(setNotify.AsBuffer());
-                        //characteristic.ValueChanged += valueChangeHandler;
-                        try
-                        {
-                            // TODO Notification 설정이 알수 없는 이유로 실패.
-                            var result = await characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Indicate);
-                            characteristic.ValueChanged += valueChangeHandler;
-                            //   System.Diagnostics.Debug.WriteLine("Notify set " + result.ProtocolError.Value);
-                        }
-                        catch (Exception e)
-                        {
-                            System.Diagnostics.Debug.WriteLine("Notify set error" + e.StackTrace);
-                        }
-                        byte[] ByteArray = { (byte)'H', (byte)'I' };
-                        IBuffer buffer = ByteArray.AsBuffer();
-                        await characteristic.WriteValueAsync(buffer);
+                        var result = await characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify);
+                        characteristic.ValueChanged += valueChangeHandler;
                     }
-                    else
+                    catch (Exception e)
                     {
-                        System.Diagnostics.Debug.WriteLine(serialCharsticsResult.Status);
+                        System.Diagnostics.Debug.WriteLine("Notify set error" + e.StackTrace);
                     }
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine(serviceResult.Status);
+                    System.Diagnostics.Debug.WriteLine(serialCharsticsResult.Status);
                 }
-                //}
-                //}
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine(serviceResult.Status);
             }
         }
 
-        private void valueChangeHandler(GattCharacteristic characteristic, GattValueChangedEventArgs args)
+        private async void valueChangeHandler(GattCharacteristic characteristic, GattValueChangedEventArgs args)
         {
-            System.Diagnostics.Debug.WriteLine(args.CharacteristicValue);
+            // TODO Handle received sensor value.
+            GattReadResult result = await characteristic.ReadValueAsync();
+            var reader = DataReader.FromBuffer(result.Value);
+            byte[] input = new byte[reader.UnconsumedBufferLength];
+            reader.ReadBytes(input);
+            string str = System.Text.Encoding.UTF8.GetString(input);
+            System.Diagnostics.Debug.WriteLine(str);
         }
 
         private async void OnAdvertisementWatcherStopped(BluetoothLEAdvertisementWatcher watcher, BluetoothLEAdvertisementWatcherStoppedEventArgs eventArgs)
@@ -246,5 +192,17 @@ namespace TIMPOITER
             });
         }
 
+        private void SendButton_Click(object sender, RoutedEventArgs e)
+        {
+            SendData(characteristic, Data.Text);
+            Data.Text = "";
+        }
+
+        private async void SendData(GattCharacteristic characteristic, string str)
+        {
+            var dataWriter = new Windows.Storage.Streams.DataWriter();
+            dataWriter.WriteString(str);
+            await characteristic.WriteValueAsync(dataWriter.DetachBuffer());
+        }
     }
 }
