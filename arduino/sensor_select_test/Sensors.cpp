@@ -2,6 +2,7 @@
 #include "Sensors.h"
 #include <VL53L0X.h>
 #include <Wire.h>
+#include <SoftwareSerial.h>
 
 
 // ----- public
@@ -32,16 +33,16 @@ int Sensors::GetDistance(int sendsorNum){
   return distance;
 }
 
-void Sensors::SendDistance(HardwareSerial *refSerial, String id, int* distance){
+void Sensors::SendDistance(SoftwareSerial *refSerial, String id, int* distance){
   //sensor,[arduino id]:[distance]\n
   refSerial->print("distance,");
   refSerial->print(id);
   refSerial->print(":");
   for(int i = 0 ; i < Sensors::sensorCount-1; i++){
     refSerial->print(distance[i]);  
-    refSerial->print(",");  
+    refSerial->print(",");   
   }
-  refSerial->println(distance[Sensors::sensorCount]);
+  refSerial->println(distance[Sensors::sensorCount-1]);
 }
 
 // ----- private

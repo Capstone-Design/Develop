@@ -1,5 +1,6 @@
 #include "Arduino.h"
 #include "Battery.h"
+#include <SoftwareSerial.h>
 
 // ----- public
 Battery::Battery(){};
@@ -10,7 +11,8 @@ Battery::Battery(int maximum, int minimum, int cap){
   Battery::RefreshPercentage();
 }
 
-int Battery::RefreshPercentage(HardwareSerial *mySerial = NULL, String id = ""){
+int Battery::RefreshPercentage(SoftwareSerial *mySerial = NULL, String id = ""){
+  // TODO 배터리 잔량 및 사용시간 추정 계산 해야함.
   int maximumV = Battery::maximumVoltage;
   int minimumV = Battery::minimumVoltage;
   int capacity = Battery::capacity;
@@ -28,7 +30,7 @@ int Battery::RefreshPercentage(HardwareSerial *mySerial = NULL, String id = ""){
   return Battery::percentage;
 }
 
-void Battery::SendBattery(HardwareSerial *mySerial, String id){
+void Battery::SendBattery(SoftwareSerial *mySerial, String id){
   //batt,[arduino id]:[percentage]\n
   mySerial->print("batt,");
   mySerial->print(id);
