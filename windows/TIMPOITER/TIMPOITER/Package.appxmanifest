@@ -55,5 +55,6 @@
     <rescap:Capability Name="inputInjectionBrokered" />
     <rescap:Capability Name="runFullTrust" />
     <rescap:Capability Name="confirmAppClose" />
+    <DeviceCapability Name="bluetooth" />
   </Capabilities>
 </Package>
