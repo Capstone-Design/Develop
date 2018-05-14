@@ -24,6 +24,9 @@
         <TextBox x:Name="TextBox_x" HorizontalAlignment="Left" Margin="366,345,0,-377" Grid.RowSpan="2" Text="TextBox" VerticalAlignment="Top" Width="128"/>
         <TextBlock HorizontalAlignment="Left" Margin="297,347,0,-367" Grid.RowSpan="2" Text="해상도 :" TextWrapping="Wrap" VerticalAlignment="Top"/>
         <TextBox x:Name="TextBox_y" HorizontalAlignment="Left" Margin="521,345,0,-377" Grid.RowSpan="2" Text="TextBox" VerticalAlignment="Top"/>
+        <TextBox x:Name="screensize_x" HorizontalAlignment="Left" Margin="379,416,0,-448" Grid.RowSpan="2" Text="TextBox" VerticalAlignment="Top"/>
+        <TextBox x:Name="screensize_y" HorizontalAlignment="Left" Height="22" Margin="480,346,0,-368" Grid.Row="1" Text="TextBox" VerticalAlignment="Top" Width="86"/>
+        <Button Content="Button" HorizontalAlignment="Left" Height="32" Margin="623,355.6,0,0" Grid.Row="1" VerticalAlignment="Top" Width="95" Click="Button_Click"/>
 
     </Grid>
 </Page>

@@ -182,7 +182,9 @@ namespace TIMPOITER
             byte[] input = new byte[reader.UnconsumedBufferLength];
             reader.ReadBytes(input);
             string str = System.Text.Encoding.UTF8.GetString(input);
-            System.Diagnostics.Debug.WriteLine(str);
+            //string str = Convert.ToString(input);
+            //System.Diagnostics.Debug.WriteLine(str);
+            System.Diagnostics.Debug.WriteLine(input);
             //ToastHelper.ShowToast(str);
         }
 
