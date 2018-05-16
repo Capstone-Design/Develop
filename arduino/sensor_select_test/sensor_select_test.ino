@@ -26,6 +26,17 @@ void setup()
 
 void loop()
 { 
+//  // hm10 제어용
+//  while(hm10.available()>0){
+//    byte data = hm10.read();
+//    Serial.write(data);
+//  }
+//    
+//  while(Serial.available()>0){
+//    byte data = Serial.read();
+//    hm10.write(data);
+//  }
+
   if (hm10.available()>0) {
        int distance[SENSOR_COUNT];
        for(int i = 0; i < SENSOR_COUNT; i++){
@@ -34,7 +45,7 @@ void loop()
        
        manager.SendDistance(&hm10, "1", distance);
        // TODO RefreshPercentage를 통해 보내도록 설정.
-       hm10.println(batt.ReadVcc());
+       //hm10.println(batt.ReadVcc());
        //Serial.print(batt.ReadVcc());
     }
 }
