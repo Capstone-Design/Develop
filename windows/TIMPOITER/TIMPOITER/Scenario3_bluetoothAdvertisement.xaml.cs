@@ -175,7 +175,7 @@ namespace TIMPOITER
             }
         }
 
-        private async void valueChangeHandler(GattCharacteristic characteristic, GattValueChangedEventArgs args)
+        private void valueChangeHandler(GattCharacteristic characteristic, GattValueChangedEventArgs args)
         {
             // TODO Handle received sensor value.
             var reader = DataReader.FromBuffer(args.CharacteristicValue);
