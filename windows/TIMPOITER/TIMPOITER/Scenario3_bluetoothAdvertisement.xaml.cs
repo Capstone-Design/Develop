@@ -17,6 +17,9 @@ using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Devices.Enumeration;
+using Windows.Data.Json;
+using System.Diagnostics;
+using System.Threading.Tasks;
 
 
 namespace TIMPOITER
@@ -28,11 +31,30 @@ namespace TIMPOITER
 
     public sealed partial class Scenario3_bluetoothAdvertisement : Page
     {
+        /* For Debugging
+     * 
+     * 이름바꾸고 재부팅 많이해야함.
+     * Left MAC : C8FD198307AF
+     * Left Name : TimpointerL
+     * 
+     * Right MAC : D43639C466EA
+     * Right Name : TimpointerR
+     * 
+     * AT Command : http://blog.naver.com/PostView.nhn?blogId=xisaturn&logNo=220712028679
+     * 
+     */
         // Connect to HM-10 Default Ble
+        // index 0 = left, 1 = right
+        ulong[] DEVICE_MAC = { 0xC8FD198307AF, 0xD43639C466EA };
+        string[] DEVICE_NAME = { "TimpointerL", "TimpointerR" };
+        bool left_connected = false;
+        bool right_connected = false;
+        private GattCharacteristic[] characteristic = new GattCharacteristic[2];
+
         Guid TimpointerServiceUUID = BluetoothUuidHelper.FromShortId(0xffe0);
         Guid TimpointerSerialCharacteristicUUID = BluetoothUuidHelper.FromShortId(0xffe1);
+        
         private BluetoothLEAdvertisementWatcher watcher;
-        private GattCharacteristic characteristic;
         private MainPage rootPage;
 
         public Scenario3_bluetoothAdvertisement()
@@ -141,50 +163,146 @@ namespace TIMPOITER
                     manufacturerDataString));
             });
 
-            // TODO filter by Blutooth name, connect with 2 device
-            watcher.Stop();
-            BluetoothLEDevice device = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);
+            // SyncTask for async
+            // 비동기로하면, 연결하는동안 같은 기기가 계속 탐지되여 연결시도됨.
+            // TODO Block으로 하지말고, 장치가 연결중인지 표시해 비동기로 장치 두개를 동시에 연결 할수 있도록 시도.
+            Task<BluetoothLEDevice> dev = Task.Run(async () =>
+            {
+                BluetoothLEDevice de = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);
+                return de;
+            });
+            
+            // Block until task returned;
+            BluetoothLEDevice device = dev.Result;
+            string deviceName = device.Name;
+            int index;
+            for (index = 0; index < DEVICE_NAME.Length; index++)
+            {
 
+                if (DEVICE_NAME[index].Equals(deviceName))
+                {
+                    // for debug a device
+                    watcher.Stop();
+                    break;
+                }
+            }
+            if (index == DEVICE_NAME.Length - 1) return;
+            ConnectBLEDevice(eventArgs, index);
+        }
+
+        private async void ConnectBLEDevice(BluetoothLEAdvertisementReceivedEventArgs eventArgs, int index)
+        {
+            BluetoothLEDevice device = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);
             GattDeviceServicesResult serviceResult = await device.GetGattServicesForUuidAsync(TimpointerServiceUUID);
             if (serviceResult.Status == GattCommunicationStatus.Success)
             {
                 GattCharacteristicsResult serialCharsticsResult = await serviceResult.Services.ElementAt(0).GetCharacteristicsForUuidAsync(TimpointerSerialCharacteristicUUID);
                 if (serialCharsticsResult.Status == GattCommunicationStatus.Success)
                 {
-                    characteristic = serialCharsticsResult.Characteristics.ElementAt(0);
+                    characteristic[index] = serialCharsticsResult.Characteristics.ElementAt(0);
                     try
                     {
-                        var result = await characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify);
-                        characteristic.ValueChanged += valueChangeHandler;
-                        ShowStr("Notification resigter "+ result);
+                        var result = await characteristic[index].WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify);
+                        characteristic[index].ValueChanged += valueChangeHandler;
+                        ShowStr("Notification resigter " + result);
+                        if (result == GattCommunicationStatus.Success)
+                        {
+                            // 처음 연결시 데이터를 보내 아두이노에서 시리얼 개통을함.
+                            SendData(characteristic[index], " ");
+                            switch (index)
+                            {
+                                case 0:
+                                    left_connected = true;
+                                    break;
+                                case 1:
+                                    right_connected = true;
+                                    break;
+                            }
+
+                            // 양쪽 장치가 모두 연결되면 Watcher 중지.
+                            if ((left_connected && right_connected) == true)
+                            {
+                                watcher.Stop();
+                            }
+                        } else
+                        {
+                            ConnectBLEDevice(eventArgs, index);
+                        }
                     }
                     catch (Exception e)
                     {
                         ShowStr("Notify set error" + e.StackTrace);
+                        ConnectBLEDevice(eventArgs, index);
                         //System.Diagnostics.Debug.WriteLine("Notify set error" + e.StackTrace);
                     }
                 }
                 else
                 {
                     ShowStr("Find charateristic error" + serialCharsticsResult.Status);
+                    ConnectBLEDevice(eventArgs, index);
                 }
             }
             else
             {
                 ShowStr("Find service error" + serviceResult.Status);
+                ConnectBLEDevice(eventArgs, index);
             }
         }
 
+        // 값 읽기 전용 변수
+        string jsonStr = "";
+        string[] stringSeparators = new string[] { "\n" };
+
+        // TODO 좌우를 위해 함수 혹은 json을 분리완성하도록.
         private void valueChangeHandler(GattCharacteristic characteristic, GattValueChangedEventArgs args)
         {
             // TODO Handle received sensor value.
+            string str = "";
             var reader = DataReader.FromBuffer(args.CharacteristicValue);
-            byte[] input = new byte[reader.UnconsumedBufferLength];
+            byte[] input = new byte[args.CharacteristicValue.Length];
             reader.ReadBytes(input);
             reader.DetachBuffer();
-            string str = System.Text.Encoding.UTF8.GetString(input);
-            ShowStr(str);
-            
+            str = System.Text.Encoding.UTF8.GetString(input);
+            if (str.Contains("\n"))
+            {
+                Debug.WriteLine(str);
+                // 
+                string[] splitted = str.Split(stringSeparators, StringSplitOptions.None);
+                //ShowStr(jsonStr + splitted[0]);
+
+                // 초기 시작시 JSON 앞부분을 받지 못하는경우가 있음.
+                try
+                {
+                    string toParse = jsonStr;
+                    if (!splitted[0].Equals(""))
+                    {
+                        // "\n"으로 스트링이 시작하면, index 0이 ""이므로 생략.
+                        toParse += splitted[0].Substring(0, splitted[0].Length - 1);
+                    }
+                    Debug.WriteLine(toParse);
+                    JsonObject root = JsonValue.Parse(toParse).GetObject();
+                    JsonArray distances = root["distance"].GetArray();
+                    string toShow = "";
+                    for (int i = 0; i < distances.Count; i++)
+                    {
+                        int value = (int)distances[i].GetNumber();
+                        toShow += value + ", ";
+                    }
+                    //ShowStr(toShow);
+                    //Debug.WriteLine(root["id"].GetString());
+                    //Debug.WriteLine(root["distance"].GetObject()["State"].GetString());
+                }
+                catch
+                {
+                    // Do Nothing
+                }
+                jsonStr = splitted[1];
+            }
+            else
+            {
+                jsonStr += str;
+            }
+
         }
 
         private async void ShowStr(string str)
@@ -201,12 +319,6 @@ namespace TIMPOITER
             {
 
             });
-        }
-
-        private void SendButton_Click(object sender, RoutedEventArgs e)
-        {
-            SendData(characteristic, Data.Text);
-            Data.Text = "";
         }
 
         private async void SendData(GattCharacteristic characteristic, string str)
