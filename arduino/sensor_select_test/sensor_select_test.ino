@@ -14,10 +14,12 @@ const int SENSOR4_XSHUT = 12;
 SoftwareSerial hm10(2,3); // HM-10 표기 기준 TX, RX
 Sensors manager;
 Battery batt;
+int test = 0;
 
 void setup()
 {
   hm10.begin(9600);
+  Serial.begin(9600);
   manager = Sensors(SENSOR_COUNT, SENSOR1_XSHUT, SENSOR2_XSHUT, SENSOR3_XSHUT, SENSOR4_XSHUT );
   batt = Battery(5010, 3200, 900);
 }
@@ -33,6 +35,6 @@ void loop()
        manager.SendDistance(&hm10, "1", distance);
        // TODO RefreshPercentage를 통해 보내도록 설정.
        hm10.println(batt.ReadVcc());
+       //Serial.print(batt.ReadVcc());
     }
 }
-

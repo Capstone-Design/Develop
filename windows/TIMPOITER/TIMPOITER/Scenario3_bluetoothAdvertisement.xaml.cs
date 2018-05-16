@@ -156,32 +156,43 @@ namespace TIMPOITER
                     {
                         var result = await characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify);
                         characteristic.ValueChanged += valueChangeHandler;
+                        ShowStr("Notification resigter "+ result);
                     }
                     catch (Exception e)
                     {
-                        System.Diagnostics.Debug.WriteLine("Notify set error" + e.StackTrace);
+                        ShowStr("Notify set error" + e.StackTrace);
+                        //System.Diagnostics.Debug.WriteLine("Notify set error" + e.StackTrace);
                     }
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine(serialCharsticsResult.Status);
+                    ShowStr("Find charateristic error" + serialCharsticsResult.Status);
                 }
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine(serviceResult.Status);
+                ShowStr("Find service error" + serviceResult.Status);
             }
         }
 
         private async void valueChangeHandler(GattCharacteristic characteristic, GattValueChangedEventArgs args)
         {
             // TODO Handle received sensor value.
-            GattReadResult result = await characteristic.ReadValueAsync();
-            var reader = DataReader.FromBuffer(result.Value);
+            var reader = DataReader.FromBuffer(args.CharacteristicValue);
             byte[] input = new byte[reader.UnconsumedBufferLength];
             reader.ReadBytes(input);
+            reader.DetachBuffer();
             string str = System.Text.Encoding.UTF8.GetString(input);
-            System.Diagnostics.Debug.WriteLine(str);
+            ShowStr(str);
+            
+        }
+
+        private async void ShowStr(string str)
+        {
+            await this.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            {
+                ReceivedAdvertisementListBox.Items.Add(str);
+            });
         }
 
         private async void OnAdvertisementWatcherStopped(BluetoothLEAdvertisementWatcher watcher, BluetoothLEAdvertisementWatcherStoppedEventArgs eventArgs)
@@ -202,7 +213,8 @@ namespace TIMPOITER
         {
             var dataWriter = new Windows.Storage.Streams.DataWriter();
             dataWriter.WriteString(str);
-            await characteristic.WriteValueAsync(dataWriter.DetachBuffer());
+            var result = await characteristic.WriteValueAsync(dataWriter.DetachBuffer());
+
         }
     }
 }
