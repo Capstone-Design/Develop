@@ -16,17 +16,13 @@ using Windows.Storage.Streams;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Devices.Bluetooth.Advertisement;
-using Windows.Devices.Bluetooth.Background;
-using Windows.ApplicationModel.Background;
 using Windows.Devices.Enumeration;
 
-
-namespace TIMPOITER
+namespace SystrayComponent
 {
-    /// <summary>
-    /// 자체적으로 사용하거나 프레임 내에서 탐색할 수 있는 빈 페이지입니다.
-    /// </summary>
-    /// 
+    class Class1
+    {
+    }
 
     public sealed partial class Scenario3_bluetoothAdvertisement : Page
     {
@@ -37,54 +33,9 @@ namespace TIMPOITER
         private GattCharacteristic characteristic;
         private MainPage rootPage;
 
-
-
-        //
-        //private IBackgroundTaskRegistration taskRegistration;
-        //private BluetoothLEAdvertisementWatcherTrigger trigger;
-        //private string taskName = "BLEScan_BackgroundTask";
-        //private string taskEntryPoint = "BackgroundTask.BLEScanTask";
-
-        public static string RegisterBackgroundTask(GattCharacteristic characteristic)
-        {
-            System.Diagnostics.Debug.WriteLine("RegisterBackgroundTask");
-
-            try
-            {
-                BackgroundTaskBuilder backgroundTaskBuilder = new BackgroundTaskBuilder();
-                backgroundTaskBuilder.Name = "BLETask";
-                backgroundTaskBuilder.TaskEntryPoint = "BackgroundTask.BLETask";
-
-                //backgroundTaskBuilder.SetTrigger(new SystemTrigger(SystemTriggerType.TimeZoneChange, false));
-                backgroundTaskBuilder.SetTrigger(new GattCharacteristicNotificationTrigger(characteristic));
-
-                BackgroundTaskRegistration backgroundTaskRegistration = backgroundTaskBuilder.Register();
-            }
-            catch (Exception e)
-            {
-                System.Diagnostics.Debug.WriteLine("ERROR: Accessing your device failed." + Environment.NewLine + e.Message);
-                return "ERROR: Accessing your device failed." + Environment.NewLine + e.Message;
-            }
-
-            return null;
-        }
-
-
-
         public Scenario3_bluetoothAdvertisement()
         {
             this.InitializeComponent();
-
-            //trigger = new BluetoothLEAdvertisementWatcherTrigger();
-
-            //trigger.AdvertisementFilter.Advertisement.ServiceUuids.Add(TimpointerServiceUUID);
-            //trigger.SignalStrengthFilter.InRangeThresholdInDBm = -70;
-            //trigger.SignalStrengthFilter.OutOfRangeThresholdInDBm = -75;
-            //trigger.SignalStrengthFilter.OutOfRangeTimeout = TimeSpan.FromMilliseconds(2000);
-            //trigger.ScanningMode
-
-
-
 
             // Create and initialize a new watcher instance.
             watcher = new BluetoothLEAdvertisementWatcher();
@@ -104,23 +55,6 @@ namespace TIMPOITER
 
             watcher.Stopped += OnAdvertisementWatcherStopped;
 
-            //if (taskRegistration == null)
-            //{
-            //    foreach (var task in BackgroundTaskRegistration.AllTasks.Values)
-            //    {
-            //        if (task.Name == taskName)
-            //        {
-            //            taskRegistration = task;
-            //            taskRegistration.Completed += OnBackgroundTaskCompleted;
-            //            break;
-            //        }
-            //    }
-            //}
-            //else
-            //{
-            //    taskRegistration.Completed += OnBackgroundTaskCompleted;
-        //}
-
             App.Current.Suspending += App_Suspending;
             App.Current.Resuming += App_Resuming;
 
@@ -129,18 +63,13 @@ namespace TIMPOITER
         protected override void OnNavigatingFrom(NavigatingCancelEventArgs e)
         {
 
-            App.Current.Suspending -= App_Suspending;
-            App.Current.Resuming -= App_Resuming;
+            Application.Current.Suspending -= App_Suspending;
+            Application.Current.Resuming -= App_Resuming;
 
             watcher.Stop();
 
             watcher.Received -= OnAdvertisementReceived;
             watcher.Stopped -= OnAdvertisementWatcherStopped;
-
-            //if(taskRegistration != null)
-            //{
-            //    taskRegistration.Completed -= OnBackgroundTaskCompleted;
-            //}
 
             base.OnNavigatingFrom(e);
         }
@@ -153,11 +82,6 @@ namespace TIMPOITER
             watcher.Received -= OnAdvertisementReceived;
             watcher.Stopped -= OnAdvertisementWatcherStopped;
 
-            //if (taskRegistration != null)
-            //{
-            //    taskRegistration.Completed -= OnBackgroundTaskCompleted;
-            //}
-
         }
 
 
@@ -165,25 +89,7 @@ namespace TIMPOITER
         {
             watcher.Received += OnAdvertisementReceived;
             watcher.Stopped += OnAdvertisementWatcherStopped;
-
-            ////if (taskRegistration == null)
-            ////{
-            ////    foreach (var task in BackgroundTaskRegistration.AllTasks.Values)
-            ////    {
-            ////        if (task.Name == taskName)
-            ////        {
-            ////            taskRegistration = task;
-            ////            taskRegistration.Completed += OnBackgroundTaskCompleted;
-            ////            break;
-            ////        }
-            ////    }
-            ////}
-            ////else
-            ////{
-            ////    taskRegistration.Completed += OnBackgroundTaskCompleted;
-            ////}
         }
-
 
         private void RunButton_Click(object sender, RoutedEventArgs e)
         {
@@ -192,19 +98,11 @@ namespace TIMPOITER
             System.Diagnostics.Debug.WriteLine(watcher.Status);
             System.Diagnostics.Debug.WriteLine("Watcher 시작");
 
-
-
-
         }
 
         private void StopButton_Click(object sender, RoutedEventArgs e)
         {
             watcher.Stop();
-            //if(taskRegistration != null)
-            //{
-            //    taskRegistration.Unregister(true);
-            //    taskRegistration = null;
-            //}
             System.Diagnostics.Debug.WriteLine("Watcher 중지");
         }
 
@@ -255,11 +153,8 @@ namespace TIMPOITER
                     characteristic = serialCharsticsResult.Characteristics.ElementAt(0);
                     try
                     {
-                        // 원래 버전 
-                        //var result = await characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify);
-                        //characteristic.ValueChanged += valueChangeHandler;
-                        // background 등록
-                        RegisterBackgroundTask(characteristic);
+                        var result = await characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify);
+                        characteristic.ValueChanged += valueChangeHandler;
                     }
                     catch (Exception e)
                     {

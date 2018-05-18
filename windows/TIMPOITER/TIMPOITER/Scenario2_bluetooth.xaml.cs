@@ -114,6 +114,7 @@ namespace TIMPOITER
                 // Stop the watcher.
                 deviceWatcher.Stop();
                 deviceWatcher = null;
+                ToastHelper.ShowToast("STOP");
             }
         }
 

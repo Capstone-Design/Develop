@@ -19,7 +19,7 @@ using Windows.UI.Xaml.Navigation;
 using Windows.UI.Input.Preview.Injection;
 using Windows.UI.ViewManagement;
 using Windows.Graphics.Display;
-
+using Windows.ApplicationModel.Background;
 namespace TIMPOITER
 {
     /// <summary>
@@ -39,6 +39,50 @@ namespace TIMPOITER
             SystemNavigationManagerPreview mgr =
                 SystemNavigationManagerPreview.GetForCurrentView();
             mgr.CloseRequested += SystemNavigationManager_CloseRequested;
+            Systrayicon();
+            BackBaseTask();
+        }
+
+        //테스트 용 컴퓨터 시간대를 변경시 실행 
+        public void BackBaseTask()
+        {
+            var taskRegistered = false;
+            var exampleTaskName = "BaseTask";
+
+            foreach (var task1 in BackgroundTaskRegistration.AllTasks.Values)
+            {
+                if (task1.Name == exampleTaskName)
+                {
+                    taskRegistered = true;
+                    break;
+                }
+            }
+
+            if (!taskRegistered)
+            {
+                var builder = new BackgroundTaskBuilder();
+
+                builder.Name = exampleTaskName;
+                builder.TaskEntryPoint = "BackgroundTask.BaseTask";
+                builder.SetTrigger(new SystemTrigger(SystemTriggerType.TimeZoneChange, false));
+
+                builder.AddCondition(new SystemCondition(SystemConditionType.UserPresent));
+
+                BackgroundTaskRegistration task = builder.Register();
+
+                task.Completed += new BackgroundTaskCompletedEventHandler(OnCompleted);
+            }
+
+        }
+
+        private void OnCompleted(IBackgroundTaskRegistration task, BackgroundTaskCompletedEventArgs args)
+        {
+            System.Diagnostics.Debug.WriteLine("back ground task sss");
+
+            var settings = Windows.Storage.ApplicationData.Current.LocalSettings;
+            var key = task.TaskId.ToString();
+            var message = settings.Values[key].ToString();
+            System.Diagnostics.Debug.WriteLine(message);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -55,14 +99,24 @@ namespace TIMPOITER
             }
         }
 
-        private async void SystemNavigationManager_CloseRequested(object sender, SystemNavigationCloseRequestedPreviewEventArgs e)
+        // 트레이 아이콘 생성 
+        public async void Systrayicon()
         {
-            Deferral deferral = e.GetDeferral();
-            
             if (ApiInformation.IsApiContractPresent("Windows.ApplicationModel.FullTrustAppContract", 1, 0))
             {
                 await FullTrustProcessLauncher.LaunchFullTrustProcessForCurrentAppAsync();
             }
+
+            
+        }
+
+        
+        // X 버튼 누르시에 할 일을 추가해야함 
+        private void SystemNavigationManager_CloseRequested(object sender, SystemNavigationCloseRequestedPreviewEventArgs e)
+        {
+            Deferral deferral = e.GetDeferral();
+            
+            
             e.Handled = false;
             deferral.Complete();
         }
