@@ -36,6 +36,8 @@
   <Capabilities>
     <Capability Name="internetClient" />
     <rescap:Capability Name="inputInjectionBrokered" />
+    <rescap:Capability Name="extendedBackgroundTaskTime" />
+    <rescap:Capability Name="extendedExecutionUnconstrained" />
     <rescap:Capability Name="runFullTrust" />
     <rescap:Capability Name="confirmAppClose" />
     <DeviceCapability Name="bluetooth" />
