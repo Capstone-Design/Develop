@@ -21,14 +21,20 @@
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
       </uap:VisualElements>
       <Extensions>
-        <uap:Extension Category="windows.appService">
-          <uap:AppService Name="SystrayExtensionService" />
-        </uap:Extension>
+        <Extension Category="windows.backgroundTasks" EntryPoint="BackgroundTask.BLETask">
+          <BackgroundTasks>
+            <Task Type="deviceConnectionChange" />
+            <Task Type="bluetooth" />
+          </BackgroundTasks>
+        </Extension>
         <Extension Category="windows.backgroundTasks" EntryPoint="BackgroundTask.BaseTask">
           <BackgroundTasks>
             <Task Type="systemEvent" />
           </BackgroundTasks>
         </Extension>
+        <uap:Extension Category="windows.appService">
+          <uap:AppService Name="SystrayExtensionService" />
+        </uap:Extension>
         <desktop:Extension Category="windows.fullTrustProcess" Executable="Win32\SystrayComponent.exe" />
       </Extensions>
     </Application>

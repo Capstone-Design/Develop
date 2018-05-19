@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.Windows;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -20,6 +21,8 @@ using Windows.UI.Input.Preview.Injection;
 using Windows.UI.ViewManagement;
 using Windows.Graphics.Display;
 using Windows.ApplicationModel.Background;
+using Windows.Data.Json;
+
 namespace TIMPOITER
 {
     /// <summary>
@@ -40,7 +43,7 @@ namespace TIMPOITER
                 SystemNavigationManagerPreview.GetForCurrentView();
             mgr.CloseRequested += SystemNavigationManager_CloseRequested;
             Systrayicon();
-            BackBaseTask();
+            //BackBaseTask();
         }
 
         //테스트 용 컴퓨터 시간대를 변경시 실행 
@@ -248,52 +251,177 @@ namespace TIMPOITER
 
     public class Touch
     {
+        private static Touch instance;
+
         // public
-        //vector<long, int, int> distance;
-        //vector<int, int> start;
-        //InjectedInputTouchInfo contact;   //터치 포인터 클래스 
-        //InputInjector inputInjector = InputInjector.TryCreate();
+        int preX;
+        int preY;
+        //private JsonObject distance1;
+        //private JsonObject distance2;
+        //private JsonObject data;
+
+        InputInjector inputInjector;
+        bool pointerupdate = false; // move와 touchup 구분 변수
 
         public Touch()
         {
-            //inputInjector.InitializeTouchInjection(InjectedInputVisualizationMode.Indirect);
-            //inputInjector.InjectTouchInput(new List<InjectedInputTouchInfo>
-            //{
-            //    new InjectedInputTouchInfo
-            //    {
-            //        Contact = new InjectedInputRectangle
-            //        {
-            //            Top = 50, Bottom = 50, Left = 40, Right = 40
-            //        },
-
-            //        PointerInfo = new InjectedInputPointerInfo
-            //        {
-            //            PixelLocation = new InjectedInputPoint
-            //            {
-            //                PositionX = 40, PositionY = 50
-            //            },
-
-            //            PointerOptions = InjectedInputPointerOptions.InContact,
-            //            PointerId = 1
-            //        },
-
-            //        Pressure = 1.0,
-            //        TouchParameters = InjectedInputTouchParameters.Pressure | InjectedInputTouchParameters.Contact
-
-            //    }
-            //});
-            
+            inputInjector = InputInjector.TryCreate();
+            inputInjector.InitializeTouchInjection(InjectedInputVisualizationMode.Default);
         }
 
-        public void TouchInput(char type, int x, int y)
+        public static Touch GetInstance()
+        {
+            if (instance == null)
+            {
+                instance = new Touch();
+            }
+            return instance;
+        }
+
+        public int TouchInput(int type, int X, int Y)
+        {
+            InjectedInputPointerOptions pointerOption;
+            Double pressure;        // 0.0~ 1.0 (1024단계)
+            switch (type)
+            {
+                case 0:
+                    pointerOption = InjectedInputPointerOptions.InRange;
+                    pressure = 1.0;
+                    break;
+                case 1:
+                    pointerOption = InjectedInputPointerOptions.InContact;
+                    pressure = 1.0;
+                    break;
+                case 2:
+                    pointerOption = InjectedInputPointerOptions.PointerUp;
+                    pressure = 0;
+                    break;
+                default:
+                    return -1;
+            }
+            var location = new InjectedInputPoint { PositionX = (int)X, PositionY = (int)Y };
+
+            try
+            {
+                inputInjector.InjectTouchInput
+                (
+                    new List<InjectedInputTouchInfo>
+                    {
+                        new InjectedInputTouchInfo
+                        {
+                            Contact = new InjectedInputRectangle
+                            {
+                                Top = 50,
+                                Bottom = 50,
+                                Left = 40,
+                                Right = 40
+                            },
+                            PointerInfo = new InjectedInputPointerInfo
+                            {
+                                PixelLocation = location,
+                                PointerOptions = pointerOption,
+                                PointerId = 1,
+                            },
+                            Pressure = pressure,
+                            TouchParameters =
+                            InjectedInputTouchParameters.Pressure |
+                            InjectedInputTouchParameters.Contact
+                        }
+                    }
+                );
+                return 1;
+            }
+            catch (Exception e)
+            {
+                return -2;
+            }
+        }
+
+        // 타입 분류 
+        public void CalculateTouch(int x, int y)
         {
             
-
+            if(pointerupdate == true)
+            {
+                if((x == -1)&&(y == -1)) // touchup
+                {
+                    TouchInput(2, preX, preY);
+                    pointerupdate = false;
+                }
+                else  
+                {
+                    TouchInput(0, x, y);   // move
+                }
+            }
+            else  //  tab
+            {
+                TouchInput(1, x,y);
+                pointerupdate = true;
+            }
+            preX = x;
+            preY = y;
         }
 
-    }
+        public void PutDistance(JsonObject distance1, JsonObject distance2)
+        {
+            int[] screensize = SettingValue.GetInstance().GetScreenSize();
+            int[] resolution = SettingValue.GetInstance().GetResolution();
+            int d1 = 9000; // 왼쪽 센서의 거리 값 
+            int d2 = 9000; // 오른쪽 센서의 거리 값
+            int temp = 0; // 임시 변수 
+            int k = 45; // 센서와 모서리의 거리 값 
 
-   
+            //왼쪽 센서 거리 값 결정
+            for(int i = 0; i < distance1["distance"].GetArray().Count; i++)
+            {
+                temp = (int)distance1["distance"].GetArray()[i].GetNumber();
+                if (d1 > temp)
+                {
+                    if(i == 3)
+                    {
+                        if(screensize[0] > (temp - k))
+                        {
+                            d1 = temp;
+                        }
+                    }
+                    else
+                    {
+                        d1 = temp;
+                    }
+                }
+            }
+            //오른쪽 센서 거리 값 결정 
+            for (int i = 0; i < distance2["distance"].GetArray().Count; i++)
+            {
+                temp = (int)distance2["distance"].GetArray()[i].GetNumber();
+                if (d1 > temp)
+                {
+                    if (i == 3)
+                    {
+                        if (screensize[0] > (temp - k))
+                        {
+                            d2 = temp;
+                        }
+                    }
+                    else
+                    {
+                        d2 = temp;
+                    }
+                }
+            }
+
+
+            //if(d1  )
+            double x = (Math.Pow((double)d2, 2) - Math.Pow((double)d1, 2) - Math.Pow((double)k,2)) / (-2 * k);
+            double y = Math.Sqrt((double)(d1 ^ 2)- Math.Pow(x, 2));
+
+            //해상도와 스크린 크기를 고려한 좌표
+            x = (x / screensize[0]) * resolution[0];
+            y = resolution[1] - (y / screensize[1]) * resolution[1];
+
+            CalculateTouch((int)x,(int)y);
+        }
+    }
 
     
 }

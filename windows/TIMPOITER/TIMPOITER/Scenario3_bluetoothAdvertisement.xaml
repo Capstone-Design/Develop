@@ -45,14 +45,10 @@
                             Margin="0,10,0,0"
                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
                             ScrollViewer.HorizontalScrollMode="Auto"/>
-                        
+
                     </Grid>
-                    <TextBox x:Name="Data" Grid.Row="2" Grid.Column="0"/>
-                    <Button x:Name="SendButton" Grid.Row="2" Grid.Column="1" Content="Send" Margin="5,10,10,0" Click="SendButton_Click"/>
                 </StackPanel>
             </ScrollViewer>
-
-
             <Border x:Name="ErrorBorder" Background="Red" Grid.Row="2"/>
             <!--<TextBlock x:Name="StatusBlock" Grid.Row="2" Margin="12, 10, 12, 10" Visibility="Collapsed"/>-->
         </Grid>
