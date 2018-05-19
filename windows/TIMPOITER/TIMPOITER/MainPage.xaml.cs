@@ -411,13 +411,25 @@ namespace TIMPOITER
             }
 
 
-            //if(d1  )
-            double x = (Math.Pow((double)d2, 2) - Math.Pow((double)d1, 2) - Math.Pow((double)k,2)) / (-2 * k);
-            double y = Math.Sqrt((double)(d1 ^ 2)- Math.Pow(x, 2));
+            if(d1 > 8190)
+            {
+                d1 = -1;
+            }
+            if(d2 > 8190)
+            {
+                d2 = -1;
+            }
 
-            //해상도와 스크린 크기를 고려한 좌표
-            x = (x / screensize[0]) * resolution[0];
-            y = resolution[1] - (y / screensize[1]) * resolution[1];
+            if((d1 != -1)&&(d2 != -1))
+            {
+                double x = (Math.Pow((double)d2, 2) - Math.Pow((double)d1, 2) - Math.Pow((double)k, 2)) / (-2 * k);
+                double y = Math.Sqrt((double)(d1 ^ 2) - Math.Pow(x, 2));
+
+                //해상도와 스크린 크기를 고려한 좌표
+                x = (x / screensize[0]) * resolution[0];
+                y = resolution[1] - (y / screensize[1]) * resolution[1];
+            }
+            
 
             CalculateTouch((int)x,(int)y);
         }
