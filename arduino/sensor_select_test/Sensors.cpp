@@ -34,7 +34,7 @@ int Sensors::GetDistance(int sendsorNum){
 }
 
 void Sensors::SendDistance(SoftwareSerial *refSerial, String id, int* distance){
-  //sensor,[arduino id]:[distance]\n
+  // data format : [distance1, distance2...]\n
   String data = "[";
   for(int i = 0 ; i < Sensors::sensorCount-1; i++){
     data += distance[i];
