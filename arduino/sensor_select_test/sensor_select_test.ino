@@ -1,4 +1,4 @@
-#include <Wire.h>
+s#include <Wire.h>
 // Import VL53L0X Pololu Library v1.0.2
 #include <VL53L0X.h>
 #include "Sensors.h"
@@ -41,11 +41,13 @@ void loop()
        int distance[SENSOR_COUNT];
        for(int i = 0; i < SENSOR_COUNT; i++){
          distance[i] = manager.GetDistance(i);
+         Serial.print(distance[i]);
+         Serial.print(" ");
        }
-       
+       Serial.println();
        manager.SendDistance(&hm10, "1", distance);
        // TODO RefreshPercentage를 통해 보내도록 설정.
        //hm10.println(batt.ReadVcc());
        //Serial.print(batt.ReadVcc());
-    }
+  }
 }
