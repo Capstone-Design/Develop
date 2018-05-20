@@ -19,8 +19,9 @@ using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Devices.Enumeration;
 using Windows.Data.Json;
 using System.Diagnostics;
-using System.Threading.Tasks;
-
+using System.Threading;
+using System.Collections;
+using Windows.UI.Input.Preview.Injection;
 
 namespace TIMPOITER
 {
@@ -33,27 +34,21 @@ namespace TIMPOITER
     {
         /* For Debugging
      * 
-     * 이름바꾸고 재부팅 많이해야함.
-     * Left MAC : C8FD198307AF
-     * Left Name : TimpointerL
-     * 
-     * Right MAC : D43639C466EA
-     * Right Name : TimpointerR
-     * 
      * AT Command : http://blog.naver.com/PostView.nhn?blogId=xisaturn&logNo=220712028679
      * 
      */
         // Connect to HM-10 Default Ble
         // index 0 = left, 1 = right
-        ulong[] DEVICE_MAC = { 0xC8FD198307AF, 0xD43639C466EA };
+        ulong[] DEVICE_MAC = { 0xD43639C466EA, 0x60640590981E };
         string[] DEVICE_NAME = { "TimpointerL", "TimpointerR" };
-        bool left_connected = false;
-        bool right_connected = false;
-        private GattCharacteristic[] characteristic = new GattCharacteristic[2];
+        int[] deviceConnected = { 0, 0 };
+        private GattCharacteristic[] characteristics = new GattCharacteristic[2];
+        List<JsonArray> leftData = new List<JsonArray>();
+        List<JsonArray> rightData = new List<JsonArray>();
 
         Guid TimpointerServiceUUID = BluetoothUuidHelper.FromShortId(0xffe0);
         Guid TimpointerSerialCharacteristicUUID = BluetoothUuidHelper.FromShortId(0xffe1);
-        
+
         private BluetoothLEAdvertisementWatcher watcher;
         private MainPage rootPage;
 
@@ -69,7 +64,6 @@ namespace TIMPOITER
             watcher.SignalStrengthFilter.OutOfRangeTimeout = TimeSpan.FromMilliseconds(2000);
             watcher.ScanningMode = BluetoothLEScanningMode.Active;
         }
-
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
@@ -133,174 +127,176 @@ namespace TIMPOITER
 
         private async void OnAdvertisementReceived(BluetoothLEAdvertisementWatcher watcher, BluetoothLEAdvertisementReceivedEventArgs eventArgs)
         {
-            System.Diagnostics.Debug.WriteLine("Watcher Received");
-            DateTimeOffset timestamp = eventArgs.Timestamp;
-            BluetoothLEAdvertisementType advertisementType = eventArgs.AdvertisementType;
-            Int16 rssi = eventArgs.RawSignalStrengthInDBm;
-            string localName = eventArgs.Advertisement.LocalName;
-            string manufacturerDataString = "";
-            var manufacturerSections = eventArgs.Advertisement.ManufacturerData;
-            if (manufacturerSections.Count > 0)
+            if (deviceConnected[0] > 0 && deviceConnected[1] > 0)
             {
-                var manufacturerData = manufacturerSections[0];
-                var data = new byte[manufacturerData.Data.Length];
-                using (var reader = DataReader.FromBuffer(manufacturerData.Data))
+                if (deviceConnected[0] == 2 && deviceConnected[1] == 2)
                 {
-                    reader.ReadBytes(data);
-                }
-                manufacturerDataString = string.Format("0x{0}: {1}",
-                    manufacturerData.CompanyId.ToString("X"),
-                    BitConverter.ToString(data));
-            }
-
-            await this.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-            {
-                ReceivedAdvertisementListBox.Items.Add(string.Format("[{0}]: type={1}, rssi={2}, name={3}, manufacturerData=[{4}]",
-                    timestamp.ToString("hh\\:mm\\:ss\\.fff"),
-                    advertisementType.ToString(),
-                    rssi.ToString(),
-                    localName,
-                    manufacturerDataString));
-            });
-
-            // SyncTask for async
-            // 비동기로하면, 연결하는동안 같은 기기가 계속 탐지되여 연결시도됨.
-            // TODO Block으로 하지말고, 장치가 연결중인지 표시해 비동기로 장치 두개를 동시에 연결 할수 있도록 시도.
-            Task<BluetoothLEDevice> dev = Task.Run(async () =>
-            {
-                BluetoothLEDevice de = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);
-                return de;
-            });
-            
-            // Block until task returned;
-            BluetoothLEDevice device = dev.Result;
-            string deviceName = device.Name;
-            int index;
-            for (index = 0; index < DEVICE_NAME.Length; index++)
-            {
-
-                if (DEVICE_NAME[index].Equals(deviceName))
-                {
-                    // for debug a device
                     watcher.Stop();
-                    break;
+                }
+                return;
+            }
+
+            int index;
+            for (index = 0; index < DEVICE_MAC.Length; index++)
+            {
+                if (DEVICE_MAC[index].Equals(eventArgs.BluetoothAddress))
+                {
+                    if (deviceConnected[index] == 0)
+                    {
+                        ShowStr(string.Format("0x{0:X}", eventArgs.BluetoothAddress) + " Found");
+                        deviceConnected[index] = 1;
+                        ConnectBLEDevice(eventArgs, index);
+                    }
                 }
             }
-            if (index == DEVICE_NAME.Length - 1) return;
-            ConnectBLEDevice(eventArgs, index);
         }
 
-        private async void ConnectBLEDevice(BluetoothLEAdvertisementReceivedEventArgs eventArgs, int index)
+        private async void ConnectBLEDevice(BluetoothLEAdvertisementReceivedEventArgs eventArgs, int i)
         {
-            BluetoothLEDevice device = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);
-            GattDeviceServicesResult serviceResult = await device.GetGattServicesForUuidAsync(TimpointerServiceUUID);
-            if (serviceResult.Status == GattCommunicationStatus.Success)
+            int index = i;
+            try
             {
-                GattCharacteristicsResult serialCharsticsResult = await serviceResult.Services.ElementAt(0).GetCharacteristicsForUuidAsync(TimpointerSerialCharacteristicUUID);
-                if (serialCharsticsResult.Status == GattCommunicationStatus.Success)
+                BluetoothLEDevice device = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);
+                GattDeviceServicesResult serviceResult = await device.GetGattServicesForUuidAsync(TimpointerServiceUUID);
+                if (serviceResult.Status == GattCommunicationStatus.Success)
                 {
-                    characteristic[index] = serialCharsticsResult.Characteristics.ElementAt(0);
-                    try
+                    GattCharacteristicsResult serialCharsticsResult = await serviceResult.Services.ElementAt(0).GetCharacteristicsForUuidAsync(TimpointerSerialCharacteristicUUID);
+                    if (serialCharsticsResult.Status == GattCommunicationStatus.Success)
                     {
-                        var result = await characteristic[index].WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify);
-                        characteristic[index].ValueChanged += valueChangeHandler;
-                        ShowStr("Notification resigter " + result);
-                        if (result == GattCommunicationStatus.Success)
+                        characteristics[index] = serialCharsticsResult.Characteristics.ElementAt(0);
+                        try
                         {
-                            // 처음 연결시 데이터를 보내 아두이노에서 시리얼 개통을함.
-                            SendData(characteristic[index], " ");
-                            switch (index)
+                            var result = await characteristics[index].WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify);
+                            ShowStr("Notification resigter " + result + device.Name);
+                            if (result == GattCommunicationStatus.Success)
                             {
-                                case 0:
-                                    left_connected = true;
-                                    break;
-                                case 1:
-                                    right_connected = true;
-                                    break;
+                                // 처음 연결시 데이터를 보내 아두이노에서 시리얼 개통을함.
+                                //SendData(characteristics[index], " ");
+                                deviceConnected[index] = 2;
+                                if (deviceConnected[0] == 2 && deviceConnected[1] == 2)
+                                {
+                                    characteristics[0].ValueChanged += ValueChangeHandlerL;
+                                    characteristics[1].ValueChanged += ValueChangeHandlerR;
+                                    SendData(characteristics[0], "OK");
+                                    SendData(characteristics[1], "OK");
+                                    ShowStr("두 장치 연결됨");
+                                    Thread th = new Thread(new ThreadStart(ConsumeTouch));
+                                    th.Start();
+                                }
+                                return;
+                                //ConnectionCheck();
                             }
-
-                            // 양쪽 장치가 모두 연결되면 Watcher 중지.
-                            if ((left_connected && right_connected) == true)
-                            {
-                                watcher.Stop();
-                            }
-                        } else
+                        }
+                        catch (Exception e)
                         {
-                            ConnectBLEDevice(eventArgs, index);
+                            ShowStr("Notify set error" + e.StackTrace);
                         }
                     }
-                    catch (Exception e)
+                    else
                     {
-                        ShowStr("Notify set error" + e.StackTrace);
-                        ConnectBLEDevice(eventArgs, index);
-                        //System.Diagnostics.Debug.WriteLine("Notify set error" + e.StackTrace);
+                        ShowStr("Find charateristic error" + serialCharsticsResult.Status);
                     }
                 }
                 else
                 {
-                    ShowStr("Find charateristic error" + serialCharsticsResult.Status);
-                    ConnectBLEDevice(eventArgs, index);
+                    ShowStr("Find service error" + serviceResult.Status);
                 }
             }
-            else
+            catch (Exception e)
             {
-                ShowStr("Find service error" + serviceResult.Status);
-                ConnectBLEDevice(eventArgs, index);
+
+            }
+            // 재연결 시도
+            deviceConnected[index] = 0;
+            if (watcher.Status == BluetoothLEAdvertisementWatcherStatus.Stopped)
+            {
+                watcher.Start();
             }
         }
-
         // 값 읽기 전용 변수
-        string jsonStr = "";
+        // L : 0, R : 1
+        string[] jsonStr = new string[2];
         string[] stringSeparators = new string[] { "\n" };
 
         // TODO 좌우를 위해 함수 혹은 json을 분리완성하도록.
-        private void valueChangeHandler(GattCharacteristic characteristic, GattValueChangedEventArgs args)
+        private void ValueChangeHandlerL(GattCharacteristic characteristic, GattValueChangedEventArgs args)
         {
-            // TODO Handle received sensor value.
+            int index = 0;
             string str = "";
             var reader = DataReader.FromBuffer(args.CharacteristicValue);
-            byte[] input = new byte[args.CharacteristicValue.Length];
+            byte[] input = new byte[args.CharacteristicValue.Capacity];
             reader.ReadBytes(input);
             reader.DetachBuffer();
             str = System.Text.Encoding.UTF8.GetString(input);
             if (str.Contains("\n"))
             {
-                Debug.WriteLine(str);
-                // 
+                //Debug.WriteLine(str);
                 string[] splitted = str.Split(stringSeparators, StringSplitOptions.None);
-                //ShowStr(jsonStr + splitted[0]);
+
+                string toParse = jsonStr[index];
+                if (!splitted[0].Equals(""))
+                {
+                    // "\n"으로 스트링이 시작하면, index 0이 ""이므로 생략.
+                    toParse += splitted[0].Substring(0, splitted[0].Length);
+                }
+                Debug.WriteLine("L : " + toParse);
+                // 초기 시작시 JSON 앞부분을 받지 못하는경우가 있음.
+                try
+                {
+                    JsonArray root = JsonValue.Parse(toParse).GetArray();
+                    leftData.Add(root);
+                }
+                catch (Exception e)
+                {
+                    //Debug.WriteLine("L Parse error" + e.StackTrace);
+                    // Do Nothing
+                }
+                jsonStr[index] = splitted[1];
+            }
+            else
+            {
+                jsonStr[index] += str;
+            }
+
+        }
+
+        private void ValueChangeHandlerR(GattCharacteristic characteristic, GattValueChangedEventArgs args)
+        {
+            int index = 1;
+            string str = "";
+            var reader = DataReader.FromBuffer(args.CharacteristicValue);
+            byte[] input = new byte[args.CharacteristicValue.Capacity];
+            reader.ReadBytes(input);
+            reader.DetachBuffer();
+            str = System.Text.Encoding.UTF8.GetString(input);
+            if (str.Contains("\n"))
+            {
+                //Debug.WriteLine(str);
+                string[] splitted = str.Split(stringSeparators, StringSplitOptions.None);
+
+                string toParse = jsonStr[index];
+                if (!splitted[0].Equals(""))
+                {
+                    // "\n"으로 스트링이 시작하면, index 0이 ""이므로 생략.
+                    toParse += splitted[0].Substring(0, splitted[0].Length);
+                }
+                Debug.WriteLine("R : " + toParse);
 
                 // 초기 시작시 JSON 앞부분을 받지 못하는경우가 있음.
                 try
                 {
-                    string toParse = jsonStr;
-                    if (!splitted[0].Equals(""))
-                    {
-                        // "\n"으로 스트링이 시작하면, index 0이 ""이므로 생략.
-                        toParse += splitted[0].Substring(0, splitted[0].Length - 1);
-                    }
-                    Debug.WriteLine(toParse);
-                    JsonObject root = JsonValue.Parse(toParse).GetObject();
-                    JsonArray distances = root["distance"].GetArray();
-                    string toShow = "";
-                    for (int i = 0; i < distances.Count; i++)
-                    {
-                        int value = (int)distances[i].GetNumber();
-                        toShow += value + ", ";
-                    }
-                    //ShowStr(toShow);
-                    //Debug.WriteLine(root["id"].GetString());
-                    //Debug.WriteLine(root["distance"].GetObject()["State"].GetString());
+                    JsonArray root = JsonValue.Parse(toParse).GetArray();
+                    rightData.Add(root);
                 }
-                catch
+                catch (Exception e)
                 {
-                    // Do Nothing
+                    //Debug.WriteLine("R Parse error" + e.StackTrace);
                 }
-                jsonStr = splitted[1];
+                jsonStr[index] = splitted[1];
             }
             else
             {
-                jsonStr += str;
+                jsonStr[index] += str;
             }
 
         }
@@ -311,6 +307,7 @@ namespace TIMPOITER
             {
                 ReceivedAdvertisementListBox.Items.Add(str);
             });
+            Debug.WriteLine(str);
         }
 
         private async void OnAdvertisementWatcherStopped(BluetoothLEAdvertisementWatcher watcher, BluetoothLEAdvertisementWatcherStoppedEventArgs eventArgs)
@@ -328,5 +325,161 @@ namespace TIMPOITER
             var result = await characteristic.WriteValueAsync(dataWriter.DetachBuffer());
 
         }
+
+        private long[] dataChecked = new long[2];
+        private bool inRange = false;
+        private Point prePoint = new Point(0,0);
+        private void ConsumeTouch()
+        {
+            while (true)
+            {
+                if (leftData.Count > 0)
+                {
+                    if (rightData.Count > 0)
+                    {
+                        try
+                        {
+
+                            JsonArray left = leftData.First();
+                            leftData.RemoveAt(0);
+                            JsonArray right = rightData.First();
+                            rightData.RemoveAt(0);
+
+                            int leftDistance = FindValue(left);
+                            int rightDistance = FindValue(right);
+                            if (leftDistance < 8000 && leftDistance > -1 && rightDistance < 8000 && rightDistance > -1)
+                            {
+                                Point point = CalcXY(leftDistance, rightDistance);
+                                prePoint = point;
+                                if (inRange)
+                                {
+                                    Touch(2, point.X, point.Y);
+                                }
+                                else
+                                {
+                                    inRange = true;
+                                    Touch(1, point.X, point.Y);
+                                }
+
+                            }
+                            else
+                            {
+                                inRange = false;
+                                Touch(2, prePoint.X, prePoint.Y);
+                            }
+                        }
+                        catch
+                        {
+
+                        }
+                    }
+                    else
+                    {
+                        leftData.Clear();
+                        //dataChecked[0];
+                    }
+                }
+                else
+                {
+                    rightData.Clear();
+                    //dataChecked[0];
+                }
+            }
+        }
+        private double screenW = 345;
+        private Point CalcXY(int left, int right)
+        {
+            //SettingValue a = SettingValue.GetInstance();
+            int w = 1920;
+            int h= 1080;
+            double calibX = w / screenW;
+            double l = (left - 45) * calibX;
+            double r = (right - 45) * calibX;
+            double x = (w*w + l*l - r*r) / (2 * w);
+            double y = Math.Sqrt((h*h - x*x));
+
+            ShowStr("" + x + " " + y);
+            return new Point(x, y);
+        }
+
+        private int FindValue(JsonArray json)
+        {
+            int shortest = 8000;
+            for(int i = 0; i < json.Count; i++)
+            {
+                if(shortest > json[i].GetNumber())
+                {
+                    shortest = (int)json[i].GetNumber();
+                }
+            }
+            return shortest;
+        }
+        private static InputInjector inputInjector;
+        private int Touch(int type, double X, double Y)
+        {
+            if(inputInjector == null)
+            {
+                inputInjector = InputInjector.TryCreate();
+                // Default는 기본 터치 이펙트, Indirect는 원에 +표시가 있는 마크가 표시됨.
+                inputInjector.InitializeTouchInjection(InjectedInputVisualizationMode.Indirect);
+            }
+            InjectedInputPointerOptions pointerOption;
+            Double pressure;        // 0.0~ 1.0 (1024단계)
+            switch (type)
+            {
+                case 0:
+                    pointerOption = InjectedInputPointerOptions.InRange;
+                    pressure = 1.0;
+                    break;
+                case 1:
+                    pointerOption = InjectedInputPointerOptions.InContact;
+                    pressure = 1.0;
+                    break;
+                case 2:
+                    pointerOption = InjectedInputPointerOptions.PointerUp;
+                    pressure = 0;
+                    break;
+                default:
+                    return -1;
+            }
+            var location = new InjectedInputPoint { PositionX = (int)X, PositionY = (int)Y };
+
+            try
+            {
+                inputInjector.InjectTouchInput
+                (
+                    new List<InjectedInputTouchInfo>
+                    {
+                        new InjectedInputTouchInfo
+                        {
+                            Contact = new InjectedInputRectangle
+                            {
+                                Top = 50,
+                                Bottom = 50,
+                                Left = 40,
+                                Right = 40
+                            },
+                            PointerInfo = new InjectedInputPointerInfo
+                            {
+                                PixelLocation = location,
+                                PointerOptions = pointerOption,
+                                PointerId = 1,
+                            },
+                            Pressure = pressure,
+                            TouchParameters =
+                            InjectedInputTouchParameters.Pressure |
+                            InjectedInputTouchParameters.Contact
+                        }
+                    }
+                );
+                //ShowStr("Touch at : "+ X + " " + Y);
+                return 1;
+            }
+            catch (Exception e)
+            {
+                return -2;
+            }
+        }
     }
+
 }
