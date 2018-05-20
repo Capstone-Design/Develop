@@ -91,6 +91,18 @@ namespace TIMPOITER
                 }
             }
 
+            if (args.Request.Message.ContainsKey("resolutionchaged"))
+            {
+                object message = null;
+                args.Request.Message.TryGetValue("resolutionchaged", out message);
+                int a = Convert.ToInt32(message);
+                SettingValue.GetInstance().ResolutionChanged(a / 10000, a % 10000);
+                System.Diagnostics.Debug.WriteLine("resolutionchaged");
+
+                ToastHelper.ShowToast("ResolutionChaged : " + a / 10000 + " " + a % 10000);
+
+            }
+
             if (args.Request.Message.ContainsKey("exit"))
             {
                 App.Current.Exit();

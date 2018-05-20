@@ -9,6 +9,7 @@
 //  
 //********************************************************* 
 using System;
+using System.Windows;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
@@ -17,6 +18,9 @@ using Windows.ApplicationModel;
 using Windows.ApplicationModel.Core;
 using Windows.ApplicationModel.AppService;
 using Windows.Foundation.Collections;
+using Microsoft.Win32;
+
+
 
 namespace SystrayComponent
 {
@@ -39,6 +43,8 @@ namespace SystrayComponent
             notifyIcon.Icon = SystrayComponent.Properties.Resources.Icon1;
             notifyIcon.ContextMenu = new ContextMenu(new MenuItem[]{ openMenuItem, sendMenuItem, legacyMenuItem, exitMenuItem });
             notifyIcon.Visible = true;
+            SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
+
         }
 
         private async void OpenApp(object sender, EventArgs e)
@@ -52,6 +58,16 @@ namespace SystrayComponent
             ValueSet message = new ValueSet();
             message.Add("content", "Message from Systray Extension");
             await SendToUWP(message);
+        }
+
+        private async void SystemEvents_DisplaySettingsChanged(object sender, EventArgs e)
+        {
+            ValueSet message = new ValueSet();
+            int a = (int)System.Windows.Forms.Screen.PrimaryScreen.Bounds.Width * 10000 + (int)System.Windows.Forms.Screen.PrimaryScreen.Bounds.Height;
+            message.Add("resolutionchaged",a.ToString());
+            await SendToUWP(message);
+            System.Diagnostics.Debug.WriteLine("resolutionchaged");
+
         }
 
         private void OpenLegacy(object sender, EventArgs e)

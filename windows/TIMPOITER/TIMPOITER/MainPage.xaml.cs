@@ -22,6 +22,8 @@ using Windows.UI.ViewManagement;
 using Windows.Graphics.Display;
 using Windows.ApplicationModel.Background;
 using Windows.Data.Json;
+using System.Diagnostics;
+
 
 namespace TIMPOITER
 {
@@ -172,7 +174,7 @@ namespace TIMPOITER
 
 
 
- 
+
 
     public class SettingValue
     {
@@ -183,7 +185,7 @@ namespace TIMPOITER
         private static int[] screensize = new int[2];
         private static int[] resolution = new int[2];
         private static double[] calibration = new double[2];
-        
+
 
         //arduino = new [2];
         //private int firstStart;
@@ -192,7 +194,7 @@ namespace TIMPOITER
         {
             localSettings = ApplicationData.Current.LocalSettings;
 
-            if(localSettings != null)
+            if (localSettings != null)
             {
                 screensize[0] = Convert.ToInt32(localSettings.Values["screensizeW"]);
                 screensize[1] = Convert.ToInt32(localSettings.Values["screensizeH"]);
@@ -204,7 +206,7 @@ namespace TIMPOITER
 
         public static SettingValue GetInstance()
         {
-            if(instance == null)
+            if (instance == null)
             {
                 instance = new SettingValue();
             }
@@ -212,9 +214,12 @@ namespace TIMPOITER
         }
 
         //해상도가 변경되었을 때의 설정 변경
-        public void ResolutionChanged()
+        public void ResolutionChanged(int x, int y)
         {
-
+            resolution[0] = x;
+            resolution[1] = y;
+            localSettings.Values["resolutionW"] = resolution[0];
+            localSettings.Values["resolutionH"] = resolution[1];
         }
 
         //디스플레이 사이즈 저장 
@@ -244,10 +249,10 @@ namespace TIMPOITER
 
         /*public int* GetBattery()
         {
-
             return &; 
         }*/
     }
+
 
     public class Touch
     {
@@ -370,9 +375,10 @@ namespace TIMPOITER
             int d2 = 9000; // 오른쪽 센서의 거리 값
             int temp = 0; // 임시 변수 
             int k = 45; // 센서와 모서리의 거리 값 
-
+            double x = -1;
+            double y = -1;
             //왼쪽 센서 거리 값 결정
-            for(int i = 0; i < distance1["distance"].GetArray().Count; i++)
+            for (int i = 0; i < distance1["distance"].GetArray().Count; i++)
             {
                 temp = (int)distance1["distance"].GetArray()[i].GetNumber();
                 if (d1 > temp)
@@ -422,8 +428,8 @@ namespace TIMPOITER
 
             if((d1 != -1)&&(d2 != -1))
             {
-                double x = (Math.Pow((double)d2, 2) - Math.Pow((double)d1, 2) - Math.Pow((double)k, 2)) / (-2 * k);
-                double y = Math.Sqrt((double)(d1 ^ 2) - Math.Pow(x, 2));
+                x = (Math.Pow((double)d2, 2) - Math.Pow((double)d1, 2) - Math.Pow((double)k, 2)) / (-2 * k);
+                y = Math.Sqrt((double)(d1 ^ 2) - Math.Pow(x, 2));
 
                 //해상도와 스크린 크기를 고려한 좌표
                 x = (x / screensize[0]) * resolution[0];
