@@ -103,6 +103,17 @@ namespace TIMPOITER
 
             }
 
+
+            if (args.Request.Message.ContainsKey("battery"))
+            {
+                object message = null;
+                args.Request.Message.TryGetValue("battery", out message);
+                int a = Convert.ToInt32(message);
+
+                ToastHelper.ShowToast("왼쪽 모듈 배터리 : " + a / 10000 + "% " + a % 10000 + "%");
+
+            }
+
             if (args.Request.Message.ContainsKey("exit"))
             {
                 App.Current.Exit();

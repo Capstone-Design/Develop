@@ -19,6 +19,8 @@ using Windows.ApplicationModel.Core;
 using Windows.ApplicationModel.AppService;
 using Windows.Foundation.Collections;
 using Microsoft.Win32;
+using Windows.Storage;
+
 
 
 
@@ -29,19 +31,22 @@ namespace SystrayComponent
         private AppServiceConnection connection = null;
         private NotifyIcon notifyIcon = null;
         private Form1 configWindow = new Form1();
+        ApplicationDataContainer localSettings = null;
+
 
         public SystrayApplicationContext()
         {
-            MenuItem openMenuItem = new MenuItem("Open UWP", new EventHandler(OpenApp));
+            localSettings = ApplicationData.Current.LocalSettings;
+            MenuItem openMenuItem = new MenuItem("설정", new EventHandler(OpenApp));
             MenuItem sendMenuItem = new MenuItem("Send message to UWP", new EventHandler(SendToUWP));
-            MenuItem legacyMenuItem = new MenuItem("Open legacy companion", new EventHandler(OpenLegacy));
-            MenuItem exitMenuItem = new MenuItem("Exit", new EventHandler(Exit));
+            MenuItem batteryMenuItem = new MenuItem("모듈 배터리 잔량 확인", new EventHandler(batteryConfirm));
+            MenuItem exitMenuItem = new MenuItem("종료", new EventHandler(Exit));
             openMenuItem.DefaultItem = true;
 
             notifyIcon = new NotifyIcon();
             notifyIcon.DoubleClick += new EventHandler(OpenApp);
-            notifyIcon.Icon = SystrayComponent.Properties.Resources.Icon1;
-            notifyIcon.ContextMenu = new ContextMenu(new MenuItem[]{ openMenuItem, sendMenuItem, legacyMenuItem, exitMenuItem });
+            notifyIcon.Icon = SystrayComponent.Properties.Resources.baseline_touch_app_black_48_dqL_icon;
+            notifyIcon.ContextMenu = new ContextMenu(new MenuItem[]{ openMenuItem, sendMenuItem, batteryMenuItem, exitMenuItem });
             notifyIcon.Visible = true;
             SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
 
@@ -60,6 +65,13 @@ namespace SystrayComponent
             await SendToUWP(message);
         }
 
+        private async void batteryConfirm(object sender, EventArgs e)
+        {
+            ValueSet message = new ValueSet();
+            message.Add("battery", Convert.ToInt32(localSettings.Values["battery1"]) * 1000 + Convert.ToInt32(localSettings.Values["battery2"]));
+            await SendToUWP(message);
+        }
+
         private async void SystemEvents_DisplaySettingsChanged(object sender, EventArgs e)
         {
             ValueSet message = new ValueSet();
@@ -70,17 +82,13 @@ namespace SystrayComponent
 
         }
 
-        private void OpenLegacy(object sender, EventArgs e)
-        {
-            Form1 form = new Form1();
-            form.Show();
-        }
-
         private async void Exit(object sender, EventArgs e)
         {
             ValueSet message = new ValueSet();
             message.Add("exit", "");
             await SendToUWP(message);
+            notifyIcon.Visible = false;
+            notifyIcon.Dispose();
             Application.Exit();
         }
 
