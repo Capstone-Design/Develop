@@ -23,6 +23,8 @@ using System.Threading.Tasks;
 using System.Collections;
 using Windows.UI.Input.Preview.Injection;
 using Windows.UI.Xaml.Shapes;
+using Windows.UI.Xaml.Automation.Peers;
+using Windows.UI.Xaml.Automation.Provider;
 
 namespace TIMPOITER
 {
@@ -63,7 +65,7 @@ namespace TIMPOITER
         private bool inRange = false;
         private Point prePoint = new Point(0, 0);
         private double[,] sensorsMax = new double[2, 4];
-        private double screenW = 345;
+        private double screenW = 600;
         private double screenH;
         private long preInputTime;
         private bool autoDetached = false;
@@ -101,7 +103,7 @@ namespace TIMPOITER
 
             for(int i = 0; i < 4; i++)
             {
-                sensorsMax[1, i] = sensorsMax[0, 3 - i];
+                sensorsMax[1, i] = sensorsMax[0, i];
             }
         }
 
@@ -313,18 +315,23 @@ namespace TIMPOITER
                     {
                         leftData.Add(root);
                         DrawDetect(0, root);
+
+                        ShowData(root, 0);
+                        
                     }
                 }
                 catch (Exception e)
                 {
                     //Debug.WriteLine("L Parse error" + e.StackTrace);
                     // Do Nothing
+                    DrawDetect(0, null);
                 }
                 jsonStr[index] = splitted[1];
             }
             else
             {
                 jsonStr[index] += str;
+                DrawDetect(0, null);
             }
 
         }
@@ -359,17 +366,20 @@ namespace TIMPOITER
                     {
                         rightData.Add(root);
                         DrawDetect(1, root);
+                        ShowData(root, 1);
                     }
                 }
                 catch (Exception e)
                 {
                     //Debug.WriteLine("R Parse error" + e.StackTrace);
+                    DrawDetect(1, null);
                 }
                 jsonStr[index] = splitted[1];
             }
             else
             {
                 jsonStr[index] += str;
+                DrawDetect(1, null);
             }
 
         }
@@ -379,6 +389,34 @@ namespace TIMPOITER
             await this.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
             {
                 ReceivedAdvertisementListBox.Items.Add(str);
+
+                ReceivedAdvertisementListBox.ScrollIntoView(ReceivedAdvertisementListBox.Items[ReceivedAdvertisementListBox.Items.Count - 1]);
+            });
+            Debug.WriteLine(str);
+        }
+
+        private async void ShowData(JsonArray data, int index)
+        {
+            ListBox listbox;
+            if(index == 0)
+            {
+                listbox = LeftViewer;
+            }
+            else
+            {
+                listbox = RightViewer;
+            }
+            string str = "";
+            for(int i = 0; i < data.Count; i++)
+            {
+                str += data[i].GetNumber().ToString() + "\t";
+            }
+            await this.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            {
+                listbox.Items.Clear();
+                listbox.Items.Add(str);
+                
+                //listbox.ScrollIntoView(listbox.Items[listbox.Items.Count - 1]);
             });
             Debug.WriteLine(str);
         }
@@ -403,7 +441,7 @@ namespace TIMPOITER
         {
             while (true)
             {
-                if (currentTimeMillis() - preInputTime > 100 && autoDetached == false)
+                if (currentTimeMillis() - preInputTime > 400 && autoDetached == false)
                 {
                     autoDetached = true;
                     inRange = false;
@@ -432,6 +470,7 @@ namespace TIMPOITER
                                 continue;
                             }
                             Debug.WriteLine(point);
+                            ShowStr(point.ToString());
                             if (point.X >= 0 && point.X <= w && point.Y > 0 && point.Y <= h)
                             {
                                 
@@ -464,13 +503,13 @@ namespace TIMPOITER
                     {
                         leftData.Clear();
                         //dataChecked[0];
-                        Task.Delay(20);
+                        Task.Delay(200);
                     }
                 }
                 else
                 {
                     rightData.Clear();
-                    Task.Delay(20);
+                    Task.Delay(200);
                     //dataChecked[0];
                 }
             }
@@ -495,7 +534,8 @@ namespace TIMPOITER
             {
                 double raw = array[i].GetNumber();
                 raw = raw - 45;
-                if (raw > 0 && raw < sensorsMax[deviceIndex, i])
+
+                if (raw > 0)
                 {
                     raw = raw / screenW * w;
                     if (raw < shortest)
@@ -503,6 +543,7 @@ namespace TIMPOITER
                         shortest = raw;
                     }
                 }
+
             }
             if (shortest < 8000)
             {
@@ -530,8 +571,9 @@ namespace TIMPOITER
             if(inputInjector == null)
             {
                 inputInjector = InputInjector.TryCreate();
+                inputInjector.InitializePenInjection(InjectedInputVisualizationMode.Default);
                 // Default는 기본 터치 이펙트, Indirect는 원에 +표시가 있는 마크가 표시됨.
-                inputInjector.InitializeTouchInjection(InjectedInputVisualizationMode.Default);
+                //inputInjector.InitializeTouchInjection(InjectedInputVisualizationMode.Default);
             }
             InjectedInputPointerOptions pointerOption;
             Double pressure;        // 0.0~ 1.0 (1024단계)
@@ -553,7 +595,6 @@ namespace TIMPOITER
                     return -1;
             }
             var location = new InjectedInputPoint { PositionX = (int)X, PositionY = (int)Y };
-            //DrawDot(X, Y);
             try
             {
                 inputInjector.InjectTouchInput
@@ -576,7 +617,7 @@ namespace TIMPOITER
                         }
                     }
                 );
-                
+                DrawDot(X, Y);
                 //ShowStr("Touch at : "+ X + " " + Y);
                 return 1;
             }
@@ -621,17 +662,21 @@ namespace TIMPOITER
         {
             double distance = 9999;
             int index = -1;
-            for(int i = 0; i < 4; i++)
+            if(array != null)
             {
-                double raw = array[i].GetNumber();
-                raw = raw - 45;
-                if (raw > 0 && raw < sensorsMax[direction, i])
+                for (int i = 0; i < 4; i++)
                 {
-                    raw = raw / screenW * w;
-                    if (raw < distance)
+                    double raw = array[i].GetNumber();
+                    raw = raw - 45;
+                    //raw *= 1.5;
+                    if (raw > 0 && raw < sensorsMax[direction, i])
                     {
-                        distance = raw;
-                        index = i;
+                        raw = raw / screenW * w;
+                        if (raw < distance)
+                        {
+                            distance = raw;
+                            index = i;
+                        }
                     }
                 }
             }
@@ -644,61 +689,64 @@ namespace TIMPOITER
                     myCanvas.Children.Remove(preline[direction, 1]);
                     myCanvas.Children.Remove(preline[direction, 2]);
                 }
-                
-                var line1 = new Line();
-                line1.Stroke = new SolidColorBrush(Windows.UI.Colors.Red);
-                var line2 = new Line();
-                line2.Stroke = new SolidColorBrush(Windows.UI.Colors.Blue);
-                var line3 = new Line();
-                line3.Stroke = new SolidColorBrush(Windows.UI.Colors.Black);
-                double dgree;
 
-                if (direction == 0)
+                if (array != null)
                 {
-                    line1.X1 = 0;
-                    line1.Y1 = h;
-                    dgree = index * 25 * Math.PI / 180;
-                    //line1.X2 = distance * Math.Cos(dgree);
-                    line1.X2 = distance * Math.Cos(dgree);
-                    line1.Y2 = h - distance * Math.Sin(dgree);
+                    var line1 = new Line();
+                    line1.Stroke = new SolidColorBrush(Windows.UI.Colors.Red);
+                    var line2 = new Line();
+                    line2.Stroke = new SolidColorBrush(Windows.UI.Colors.Blue);
+                    var line3 = new Line();
+                    line3.Stroke = new SolidColorBrush(Windows.UI.Colors.Black);
+                    double dgree;
 
-                    dgree = dgree + 25 * Math.PI / 180;
-                    double x = line1.X2;
-                    double y = line1.Y2;
-                    line2.X1 = x;
-                    line2.Y1 = y;
+                    if (direction == 0)
+                    {
+                        line1.X1 = 0;
+                        line1.Y1 = h;
+                        dgree = index * 25 * Math.PI / 180;
+                        //line1.X2 = distance * Math.Cos(dgree);
+                        line1.X2 = distance * Math.Cos(dgree);
+                        line1.Y2 = h - distance * Math.Sin(dgree);
 
-                    line2.X2 = x * Math.Cos(dgree) - (h - y) * Math.Sin(dgree);
-                    line2.Y2 = h - x * Math.Sin(dgree) + (h - y) * Math.Cos(dgree);
+                        dgree = dgree + 25 * Math.PI / 180;
+                        double x = line1.X2;
+                        double y = line1.Y2;
+                        line2.X1 = x;
+                        line2.Y1 = y;
+
+                        line2.X2 = x * Math.Cos(dgree) - (h - y) * Math.Sin(dgree);
+                        line2.Y2 = h - x * Math.Sin(dgree) + (h - y) * Math.Cos(dgree);
+                    }
+                    else
+                    {
+                        line1.X1 = w;
+                        line1.Y1 = h;
+                        dgree = index * 25 * Math.PI / 180;
+                        line1.X2 = w - distance * Math.Cos(dgree);
+                        line1.Y2 = h - distance * Math.Sin(dgree);
+
+                        dgree = dgree + 25 * Math.PI / 180;
+                        double x = line1.X2;
+                        double y = line1.Y2;
+                        line2.X1 = x;
+                        line2.Y1 = y;
+
+                        line2.X2 = (w - x) * Math.Cos(dgree) - (h - y) * Math.Sin(dgree);
+                        line2.Y2 = h - (w - x) * Math.Sin(dgree) + (h - y) * Math.Cos(dgree);
+                    }
+                    line3.X1 = line2.X2;
+                    line3.Y1 = line2.Y2;
+                    line3.X2 = line1.X1;
+                    line3.Y2 = line1.Y1;
+
+                    preline[direction, 0] = line1;
+                    preline[direction, 1] = line2;
+                    preline[direction, 2] = line3;
+                    myCanvas.Children.Add(line1);
+                    myCanvas.Children.Add(line2);
+                    myCanvas.Children.Add(line3);
                 }
-                else
-                {
-                    line1.X1 = w;
-                    line1.Y1 = h;
-                    dgree = index * 25 * Math.PI / 180;
-                    line1.X2 = w - distance * Math.Cos(dgree);
-                    line1.Y2 = h - distance * Math.Sin(dgree);
-
-                    dgree = dgree + 25 * Math.PI / 180;
-                    double x = line1.X2;
-                    double y = line1.Y2;
-                    line2.X1 = x;
-                    line2.Y1 = y;
-
-                    line2.X2 = (w - x) * Math.Cos(dgree) - (h - y) * Math.Sin(dgree);
-                    line2.Y2 = h - (w - x) * Math.Sin(dgree) + (h - y) * Math.Cos(dgree);
-                }
-                line3.X1 = line2.X2;
-                line3.Y1 = line2.Y2;
-                line3.X2 = line1.X1;
-                line3.Y2 = line1.Y1;
-
-                preline[direction, 0] = line1;
-                preline[direction, 1] = line2;
-                preline[direction, 2] = line3;
-                myCanvas.Children.Add(line1);
-                myCanvas.Children.Add(line2);
-                myCanvas.Children.Add(line3);
             });
         }
     }

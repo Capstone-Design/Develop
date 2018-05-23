@@ -3,4 +3,6 @@ windows/**/.vs/
 windows/**/Release/
 windows/**/Debug/
 windows/**/x64/
+windwos/**/obj/
+windwos/**/bin/
 **/package-lock.json
