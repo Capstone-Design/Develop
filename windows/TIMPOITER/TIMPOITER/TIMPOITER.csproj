@@ -96,8 +96,7 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Class1.cs" />
-    <Compile Include="Displays.cs" />
+    <Compile Include="Page.cs" />
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
@@ -105,13 +104,12 @@
     <Compile Include="Scenario1_screensetting.xaml.cs">
       <DependentUpon>Scenario1_screensetting.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Scenario2_bluetooth.xaml.cs">
-      <DependentUpon>Scenario2_bluetooth.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Scenario3_bluetoothAdvertisement.xaml.cs">
       <DependentUpon>Scenario3_bluetoothAdvertisement.xaml</DependentUpon>
     </Compile>
+    <Compile Include="SettingValie.cs" />
     <Compile Include="ToastHelper.cs" />
+    <Compile Include="Touch.cs" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest">
@@ -141,10 +139,6 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Scenario1_screensetting.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Scenario2_bluetooth.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

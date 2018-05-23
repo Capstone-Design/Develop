@@ -1,26 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
+using Windows.Data.Json;
+using Windows.Devices.Bluetooth;
+using Windows.Devices.Bluetooth.Advertisement;
+using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Foundation;
-using Windows.Foundation.Collections;
+using Windows.Storage.Streams;
+using Windows.UI.Input.Preview.Injection;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
-using Windows.Storage.Streams;
-using Windows.Devices.Bluetooth;
-using Windows.Devices.Bluetooth.GenericAttributeProfile;
-using Windows.Devices.Bluetooth.Advertisement;
-using Windows.Devices.Enumeration;
-using Windows.Data.Json;
-using System.Diagnostics;
-using System.Threading.Tasks;
-
+using Windows.UI.Xaml.Shapes;
 
 namespace TIMPOITER
 {
@@ -33,26 +27,33 @@ namespace TIMPOITER
     {
         /* For Debugging
      * 
-     * 이름바꾸고 재부팅 많이해야함.
-     * Left MAC : C8FD198307AF
-     * Left Name : TimpointerL
-     * 
-     * Right MAC : D43639C466EA
-     * Right Name : TimpointerR
-     * 
      * AT Command : http://blog.naver.com/PostView.nhn?blogId=xisaturn&logNo=220712028679
      * 
      */
         // Connect to HM-10 Default Ble
         // index 0 = left, 1 = right
-        ulong[] DEVICE_MAC = { 0xC8FD198307AF, 0xD43639C466EA };
-        string[] DEVICE_NAME = { "TimpointerL", "TimpointerR" };
-        bool left_connected = false;
-        bool right_connected = false;
-        private GattCharacteristic[] characteristic = new GattCharacteristic[2];
+        private readonly DateTime Jan1st1970 = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        Guid TimpointerServiceUUID = BluetoothUuidHelper.FromShortId(0xffe0);
-        Guid TimpointerSerialCharacteristicUUID = BluetoothUuidHelper.FromShortId(0xffe1);
+        private long currentTimeMillis()
+        {
+            return (long)(DateTime.UtcNow - Jan1st1970).TotalMilliseconds;
+        }
+
+        private ulong[] DEVICE_MAC = { 0xD43639C466EA, 0x60640590981E };
+        private string[] DEVICE_NAME = { "TimpointerL", "TimpointerR" };
+        private int[] deviceConnected = { 0, 0 };
+        private GattCharacteristic[] characteristics = new GattCharacteristic[2];
+        private List<JsonArray> leftData = new List<JsonArray>();
+        private List<JsonArray> rightData = new List<JsonArray>();
+        private List<KeyValuePair<int, BluetoothLEAdvertisementReceivedEventArgs>> connectableDevice = new List<KeyValuePair<int, BluetoothLEAdvertisementReceivedEventArgs>>();
+
+        private Guid TimpointerServiceUUID = BluetoothUuidHelper.FromShortId(0xffe0);
+        private Guid TimpointerSerialCharacteristicUUID = BluetoothUuidHelper.FromShortId(0xffe1);
+
+        // For ValueChangeHandler
+        // L : 0, R : 1
+        string[] jsonStr = new string[2];
+        string[] stringSeparators = new string[] { "\n" };
 
         private BluetoothLEAdvertisementWatcher watcher;
         private MainPage rootPage;
@@ -69,7 +70,6 @@ namespace TIMPOITER
             watcher.SignalStrengthFilter.OutOfRangeTimeout = TimeSpan.FromMilliseconds(2000);
             watcher.ScanningMode = BluetoothLEScanningMode.Active;
         }
-
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
@@ -108,7 +108,6 @@ namespace TIMPOITER
 
         }
 
-
         private void App_Resuming(object sender, object e)
         {
             watcher.Received += OnAdvertisementReceived;
@@ -121,197 +120,216 @@ namespace TIMPOITER
             System.Threading.Tasks.Task.Delay(2000);
             System.Diagnostics.Debug.WriteLine(watcher.Status);
             System.Diagnostics.Debug.WriteLine("Watcher 시작");
-
+            // BLE연결을 async로 동시에 진행하면 하나면 정상연결되어 연결 시도 관리 스레드 생성.
+            Task t = Task.Factory.StartNew(() => {
+                BLEConnecter();
+            });
         }
 
         private void StopButton_Click(object sender, RoutedEventArgs e)
         {
             watcher.Stop();
             System.Diagnostics.Debug.WriteLine("Watcher 중지");
+
+            if (characteristics[0] != null)
+                characteristics[0].ValueChanged -= ValueChangeHandlerL;
+            if (characteristics[1] != null)
+                characteristics[1].ValueChanged -= ValueChangeHandlerR;
+            for (int i = 0; i < 2; i++)
+            {
+                deviceConnected[i] = 0;
+
+                characteristics[i] = null;
+            }
+
+            leftData.Clear();
+            rightData.Clear();
+            connectableDevice.Clear();
         }
 
 
-        private async void OnAdvertisementReceived(BluetoothLEAdvertisementWatcher watcher, BluetoothLEAdvertisementReceivedEventArgs eventArgs)
+        private void OnAdvertisementReceived(BluetoothLEAdvertisementWatcher watcher, BluetoothLEAdvertisementReceivedEventArgs eventArgs)
         {
-            System.Diagnostics.Debug.WriteLine("Watcher Received");
-            DateTimeOffset timestamp = eventArgs.Timestamp;
-            BluetoothLEAdvertisementType advertisementType = eventArgs.AdvertisementType;
-            Int16 rssi = eventArgs.RawSignalStrengthInDBm;
-            string localName = eventArgs.Advertisement.LocalName;
-            string manufacturerDataString = "";
-            var manufacturerSections = eventArgs.Advertisement.ManufacturerData;
-            if (manufacturerSections.Count > 0)
-            {
-                var manufacturerData = manufacturerSections[0];
-                var data = new byte[manufacturerData.Data.Length];
-                using (var reader = DataReader.FromBuffer(manufacturerData.Data))
-                {
-                    reader.ReadBytes(data);
-                }
-                manufacturerDataString = string.Format("0x{0}: {1}",
-                    manufacturerData.CompanyId.ToString("X"),
-                    BitConverter.ToString(data));
-            }
-
-            await this.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-            {
-                ReceivedAdvertisementListBox.Items.Add(string.Format("[{0}]: type={1}, rssi={2}, name={3}, manufacturerData=[{4}]",
-                    timestamp.ToString("hh\\:mm\\:ss\\.fff"),
-                    advertisementType.ToString(),
-                    rssi.ToString(),
-                    localName,
-                    manufacturerDataString));
-            });
-
-            // SyncTask for async
-            // 비동기로하면, 연결하는동안 같은 기기가 계속 탐지되여 연결시도됨.
-            // TODO Block으로 하지말고, 장치가 연결중인지 표시해 비동기로 장치 두개를 동시에 연결 할수 있도록 시도.
-            Task<BluetoothLEDevice> dev = Task.Run(async () =>
-            {
-                BluetoothLEDevice de = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);
-                return de;
-            });
-
-            // Block until task returned;
-            BluetoothLEDevice device = dev.Result;
-            string deviceName = device.Name;
             int index;
-            for (index = 0; index < DEVICE_NAME.Length; index++)
+            for (index = 0; index < DEVICE_MAC.Length; index++)
             {
-
-                if (DEVICE_NAME[index].Equals(deviceName))
+                if (DEVICE_MAC[index].Equals(eventArgs.BluetoothAddress))
                 {
-                    // for debug a device
-                    watcher.Stop();
-                    break;
+                    if (deviceConnected[index] == 0)
+                    {
+                        connectableDevice.Add(new KeyValuePair<int, BluetoothLEAdvertisementReceivedEventArgs>(index, eventArgs));
+                    }
                 }
             }
-            if (index == DEVICE_NAME.Length - 1) return;
-            ConnectBLEDevice(eventArgs, index);
         }
 
-        private async void ConnectBLEDevice(BluetoothLEAdvertisementReceivedEventArgs eventArgs, int index)
+        private void BLEConnecter()
         {
-            BluetoothLEDevice device = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);
-            GattDeviceServicesResult serviceResult = await device.GetGattServicesForUuidAsync(TimpointerServiceUUID);
-            if (serviceResult.Status == GattCommunicationStatus.Success)
+            while (!(deviceConnected[0] == 2 && deviceConnected[1] == 2))
             {
-                GattCharacteristicsResult serialCharsticsResult = await serviceResult.Services.ElementAt(0).GetCharacteristicsForUuidAsync(TimpointerSerialCharacteristicUUID);
-                if (serialCharsticsResult.Status == GattCommunicationStatus.Success)
+                if (connectableDevice.Count > 0)
                 {
-                    characteristic[index] = serialCharsticsResult.Characteristics.ElementAt(0);
-                    try
+                    if (deviceConnected[0] != 1 && deviceConnected[1] != 1)
                     {
-                        var result = await characteristic[index].WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify);
-                        characteristic[index].ValueChanged += valueChangeHandler;
-                        ShowStr("Notification resigter " + result);
-                        if (result == GattCommunicationStatus.Success)
+                        if (deviceConnected[connectableDevice.ElementAt(0).Key] != 2)
                         {
-                            // 처음 연결시 데이터를 보내 아두이노에서 시리얼 개통을함.
-                            SendData(characteristic[index], " ");
-                            switch (index)
-                            {
-                                case 0:
-                                    left_connected = true;
-                                    break;
-                                case 1:
-                                    right_connected = true;
-                                    break;
-                            }
+                            ConnectBLEDevice(connectableDevice.ElementAt(0).Value, connectableDevice.ElementAt(0).Key);
+                        }
+                        connectableDevice.RemoveAt(0);
+                    }
+                }
+                Task.Delay(100);
+            }
+            watcher.Stop();
+            if (deviceConnected[0] == 2 && deviceConnected[1] == 2)
+            {
+                characteristics[1].ValueChanged += ValueChangeHandlerR;
+                characteristics[0].ValueChanged += ValueChangeHandlerL;
 
-                            // 양쪽 장치가 모두 연결되면 Watcher 중지.
-                            if ((left_connected && right_connected) == true)
+                ToastHelper.ShowToast("모듈 연결 완료");
+            
+                Task t = Task.Factory.StartNew(() => {
+                    Touch.GetInstance().ConsumeTouch(ref leftData, ref rightData);
+                });
+            }
+        }
+
+        private async void ConnectBLEDevice(BluetoothLEAdvertisementReceivedEventArgs eventArgs, int i)
+        {
+            int index = i;
+            deviceConnected[index] = 1;
+            try
+            {
+                BluetoothLEDevice device = await BluetoothLEDevice.FromBluetoothAddressAsync(eventArgs.BluetoothAddress);
+                GattDeviceServicesResult serviceResult = await device.GetGattServicesForUuidAsync(TimpointerServiceUUID);
+                if (serviceResult.Status == GattCommunicationStatus.Success)
+                {
+                    GattCharacteristicsResult serialCharsticsResult = await serviceResult.Services.ElementAt(0).GetCharacteristicsForUuidAsync(TimpointerSerialCharacteristicUUID);
+                    if (serialCharsticsResult.Status == GattCommunicationStatus.Success)
+                    {
+                        characteristics[index] = serialCharsticsResult.Characteristics.ElementAt(0);
+                        try
+                        {
+                            var result = await characteristics[index].WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify);
+                            //ShowStr("Notification resigter " + result + device.Name);
+                            if (result == GattCommunicationStatus.Success)
                             {
-                                watcher.Stop();
+                                // 처음 연결시 데이터를 보내 아두이노에서 시리얼 개통을함.
+                                deviceConnected[index] = 2;
+                                return;
                             }
                         }
-                        else
+                        catch (Exception e)
                         {
-                            ConnectBLEDevice(eventArgs, index);
+                            //ShowStr("Notify set error" + e.StackTrace);
                         }
                     }
-                    catch (Exception e)
+                    else
                     {
-                        ShowStr("Notify set error" + e.StackTrace);
-                        ConnectBLEDevice(eventArgs, index);
-                        //System.Diagnostics.Debug.WriteLine("Notify set error" + e.StackTrace);
+                        //ShowStr("Find charateristic error" + serialCharsticsResult.Status);
                     }
                 }
                 else
                 {
-                    ShowStr("Find charateristic error" + serialCharsticsResult.Status);
-                    ConnectBLEDevice(eventArgs, index);
+                    //ShowStr("Find service error" + serviceResult.Status);
                 }
             }
-            else
+            catch (Exception e)
             {
-                ShowStr("Find service error" + serviceResult.Status);
-                ConnectBLEDevice(eventArgs, index);
+
+            }
+            // 재연결 시도
+            deviceConnected[index] = 0;
+            if (watcher.Status == BluetoothLEAdvertisementWatcherStatus.Stopped)
+            {
+                watcher.Start();
             }
         }
 
-        // 값 읽기 전용 변수
-        string jsonStr = "";
-        string[] stringSeparators = new string[] { "\n" };
-
-        // TODO 좌우를 위해 함수 혹은 json을 분리완성하도록.
-        private void valueChangeHandler(GattCharacteristic characteristic, GattValueChangedEventArgs args)
+        private void ValueChangeHandlerL(GattCharacteristic characteristic, GattValueChangedEventArgs args)
         {
-            // TODO Handle received sensor value.
+            int index = 0;
             string str = "";
             var reader = DataReader.FromBuffer(args.CharacteristicValue);
-            byte[] input = new byte[args.CharacteristicValue.Length];
+            byte[] input = new byte[args.CharacteristicValue.Capacity];
             reader.ReadBytes(input);
             reader.DetachBuffer();
             str = System.Text.Encoding.UTF8.GetString(input);
             if (str.Contains("\n"))
             {
-                Debug.WriteLine(str);
-                // 
                 string[] splitted = str.Split(stringSeparators, StringSplitOptions.None);
-                //ShowStr(jsonStr + splitted[0]);
 
+                string toParse = jsonStr[index];
+                if (!splitted[0].Equals(""))
+                {
+                    // "\n"으로 스트링이 시작하면, index 0이 ""이므로 생략.
+                    toParse += splitted[0].Substring(0, splitted[0].Length);
+                }
+                Debug.WriteLine("L : " + toParse);
                 // 초기 시작시 JSON 앞부분을 받지 못하는경우가 있음.
                 try
                 {
-                    string toParse = jsonStr;
-                    if (!splitted[0].Equals(""))
+                    JsonArray root = JsonValue.Parse(toParse).GetArray();
+                    if (root.Count == 4)
                     {
-                        // "\n"으로 스트링이 시작하면, index 0이 ""이므로 생략.
-                        toParse += splitted[0].Substring(0, splitted[0].Length - 1);
+                        leftData.Add(root);
                     }
-                    Debug.WriteLine(toParse);
-                    JsonObject root = JsonValue.Parse(toParse).GetObject();
-                    JsonArray distances = root["distance"].GetArray();
-                    string toShow = "";
-                    for (int i = 0; i < distances.Count; i++)
-                    {
-                        int value = (int)distances[i].GetNumber();
-                        toShow += value + ", ";
-                    }
-                    //ShowStr(toShow);
-                    //Debug.WriteLine(root["id"].GetString());
-                    //Debug.WriteLine(root["distance"].GetObject()["State"].GetString());
                 }
-                catch
+                catch (Exception e)
                 {
+                    //Debug.WriteLine("L Parse error" + e.StackTrace);
                     // Do Nothing
                 }
-                jsonStr = splitted[1];
+                jsonStr[index] = splitted[1];
             }
             else
             {
-                jsonStr += str;
+                jsonStr[index] += str;
             }
 
         }
 
-        private async void ShowStr(string str)
+        private void ValueChangeHandlerR(GattCharacteristic characteristic, GattValueChangedEventArgs args)
         {
-            await this.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            int index = 1;
+            string str = "";
+            var reader = DataReader.FromBuffer(args.CharacteristicValue);
+            byte[] input = new byte[args.CharacteristicValue.Capacity];
+            reader.ReadBytes(input);
+            reader.DetachBuffer();
+            str = System.Text.Encoding.UTF8.GetString(input);
+            if (str.Contains("\n"))
             {
-                ReceivedAdvertisementListBox.Items.Add(str);
-            });
+                string[] splitted = str.Split(stringSeparators, StringSplitOptions.None);
+
+                string toParse = jsonStr[index];
+                if (!splitted[0].Equals(""))
+                {
+                    // "\n"으로 스트링이 시작하면, index 0이 ""이므로 생략.
+                    toParse += splitted[0].Substring(0, splitted[0].Length);
+                }
+                Debug.WriteLine("R : " + toParse);
+
+                // 초기 시작시 JSON 앞부분을 받지 못하는경우가 있음.
+                try
+                {
+                    JsonArray root = JsonValue.Parse(toParse).GetArray();
+                    if (root.Count == 4)
+                    {
+                        rightData.Add(root);
+                    }
+                }
+                catch (Exception e)
+                {
+                    //Debug.WriteLine("R Parse error" + e.StackTrace);
+                }
+                jsonStr[index] = splitted[1];
+            }
+            else
+            {
+                jsonStr[index] += str;
+            }
+
         }
 
         private async void OnAdvertisementWatcherStopped(BluetoothLEAdvertisementWatcher watcher, BluetoothLEAdvertisementWatcherStoppedEventArgs eventArgs)
@@ -322,12 +340,7 @@ namespace TIMPOITER
             });
         }
 
-        private async void SendData(GattCharacteristic characteristic, string str)
-        {
-            var dataWriter = new Windows.Storage.Streams.DataWriter();
-            dataWriter.WriteString(str);
-            var result = await characteristic.WriteValueAsync(dataWriter.DetachBuffer());
-
-        }
+      
     }
+
 }

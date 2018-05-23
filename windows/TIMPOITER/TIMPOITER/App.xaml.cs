@@ -6,7 +6,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.ApplicationModel.AppService;
-using Windows.ApplicationModel.Background;
+using Windows.ApplicationModel.Background;  
 using Windows.UI.Core;
 using Windows.UI.Popups;
 using Windows.Foundation;

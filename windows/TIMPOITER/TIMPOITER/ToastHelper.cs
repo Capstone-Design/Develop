@@ -17,7 +17,7 @@ namespace TIMPOITER
             XmlDocument toastXml = ToastNotificationManager.GetTemplateContent(toastTemplate);
 
             XmlNodeList toastTextElements = toastXml.GetElementsByTagName("text");
-            toastTextElements[0].AppendChild(toastXml.CreateTextNode("UWP with Systray"));
+            toastTextElements[0].AppendChild(toastXml.CreateTextNode("TIMPOINTER"));
             toastTextElements[1].AppendChild(toastXml.CreateTextNode(message));
 
             ToastNotification toast = new ToastNotification(toastXml);
