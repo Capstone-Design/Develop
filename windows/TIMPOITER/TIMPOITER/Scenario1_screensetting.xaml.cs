@@ -27,6 +27,9 @@ namespace TIMPOITER
         public Scenario1_screensetting()
         {
             this.InitializeComponent();
+            Windows.UI.ViewManagement.ApplicationView.PreferredLaunchViewSize = new Windows.Foundation.Size(500, 500);
+            Windows.UI.ViewManagement.ApplicationView.PreferredLaunchWindowingMode = Windows.UI.ViewManagement.ApplicationViewWindowingMode.PreferredLaunchViewSize;
+
             SettingValue a = SettingValue.GetInstance();
             TextBox_x.Text = a.GetResolution()[0].ToString();
             TextBox_y.Text = a.GetResolution()[1].ToString();

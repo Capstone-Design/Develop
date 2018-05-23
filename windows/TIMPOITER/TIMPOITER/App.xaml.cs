@@ -18,6 +18,8 @@ using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+using Windows.UI.ViewManagement;
+
 
 namespace TIMPOITER
 {
@@ -43,7 +45,8 @@ namespace TIMPOITER
             //트레이 아이콘을 위한 코드 
             this.LeavingBackground += App_LeavingBackground;
             this.EnteredBackground += App_EnteredBackground;
-            Windows.UI.ViewManagement.ApplicationView.PreferredLaunchViewSize = new Windows.Foundation.Size(1000, 500);
+            
+            Windows.UI.ViewManagement.ApplicationView.PreferredLaunchViewSize = new Windows.Foundation.Size(700, 500);
             Windows.UI.ViewManagement.ApplicationView.PreferredLaunchWindowingMode = Windows.UI.ViewManagement.ApplicationViewWindowingMode.PreferredLaunchViewSize;
             
         }
@@ -99,10 +102,17 @@ namespace TIMPOITER
                 SettingValue.GetInstance().ResolutionChanged(a / 10000, a % 10000);
                 System.Diagnostics.Debug.WriteLine("resolutionchaged");
 
-                ToastHelper.ShowToast("ResolutionChaged : " + a / 10000 + " " + a % 10000);
+                ToastHelper.ShowToast("해상도 변경 : " + a / 10000 + " X " + a % 10000);
 
             }
 
+            if (args.Request.Message.ContainsKey("openSetting"))
+            {
+                if (App.IsForeground)
+                {
+                    MainPage.Current.ScenarioControl_Settting();
+                }
+            }
 
             if (args.Request.Message.ContainsKey("battery"))
             {
@@ -110,7 +120,7 @@ namespace TIMPOITER
                 args.Request.Message.TryGetValue("battery", out message);
                 int a = Convert.ToInt32(message);
 
-                ToastHelper.ShowToast("왼쪽 모듈 배터리 : " + a / 10000 + "% " + a % 10000 + "%");
+                ToastHelper.ShowToast("왼쪽 모듈 배터리    : " + a / 10000 + "%\n오른쪽 모듈 배터리 : " + a % 10000 + "%");
 
             }
 

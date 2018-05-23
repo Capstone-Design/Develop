@@ -61,7 +61,7 @@
                     </ToggleButton.Content>
                 </ToggleButton>
             </Border>
-            <TextBlock x:Name="Header" Text="Universal Windows Platform sample"  Margin="70,15,1,0" />
+            <TextBlock x:Name="Header" Text="TIMPOINTER" Margin="70,15,1,0" FontSize="36" />
             <!-- Use AutomationProperties.AccessibilityView to let a screen reader know that the image is purely decorative.
                  (If the Image conveyed useful information we'd not use AccessibilityView, but instead provide a localized 
                  name for the Image to convey its purpose.) -->

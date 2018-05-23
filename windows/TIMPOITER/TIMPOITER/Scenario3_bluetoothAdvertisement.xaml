@@ -16,9 +16,7 @@
             </Grid.RowDefinitions>
             <StackPanel Margin="0,0,0,10">
                 <TextBlock TextWrapping="Wrap">
-                    Scanning for a particular LE advertisement containing a matching manufacturer data section and 
-                    above a certain RSSI threshold. This scenario requires Scenario 2 or 4 to run on another Windows platform
-                    in close proximity of this one. Press Run button to begin scanning. Received advertisements are shown below.
+                   블루투스 연결을 시도하고 연결 후 작업을 시작합니다.
                 </TextBlock>
             </StackPanel>
 

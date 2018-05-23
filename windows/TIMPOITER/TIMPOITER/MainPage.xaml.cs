@@ -1,26 +1,16 @@
 ﻿
 using System;
-using System.Windows;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
+using Windows.ApplicationModel;
+using Windows.ApplicationModel.Background;
 using Windows.Foundation;
-using Windows.Foundation.Collections;
 using Windows.Foundation.Metadata;
 using Windows.UI.Core.Preview;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Input;
-using Windows.ApplicationModel;
 using Windows.UI.Xaml.Navigation;
 using Windows.UI.ViewManagement;
-using Windows.ApplicationModel.Background;
-using System.Diagnostics;
-
-
 namespace TIMPOITER
 {
     /// <summary>
@@ -36,6 +26,7 @@ namespace TIMPOITER
             this.InitializeComponent();
             Current = this;
             SampleTitle.Text = FEATURE_NAME;
+       
 
             SystemNavigationManagerPreview mgr =
                 SystemNavigationManagerPreview.GetForCurrentView();
@@ -131,10 +122,22 @@ namespace TIMPOITER
             if (s != null)
             {
                 ScenarioFrame.Navigate(s.ClassType);
-                if (Window.Current.Bounds.Width < 640)
-                {
+                //if (Window.Current.Bounds.Width < 640)
+                //{
                     Splitter.IsPaneOpen = false;
-                }
+                //}
+            }
+        }
+
+        public void ScenarioControl_Settting()
+        {
+            Scenario s = new Scenario() { Title = "Screen Settting", ClassType = typeof(Scenario1_screensetting) };
+            if (s != null)
+            {
+                ScenarioFrame.Navigate(s.ClassType);
+                
+                Splitter.IsPaneOpen = false;
+               
             }
         }
 

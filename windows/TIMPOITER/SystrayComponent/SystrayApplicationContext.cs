@@ -37,8 +37,7 @@ namespace SystrayComponent
         public SystrayApplicationContext()
         {
             localSettings = ApplicationData.Current.LocalSettings;
-            MenuItem openMenuItem = new MenuItem("설정", new EventHandler(OpenApp));
-            MenuItem sendMenuItem = new MenuItem("Send message to UWP", new EventHandler(SendToUWP));
+            MenuItem openMenuItem = new MenuItem("설정", new EventHandler(OpenSetting));
             MenuItem batteryMenuItem = new MenuItem("모듈 배터리 잔량 확인", new EventHandler(batteryConfirm));
             MenuItem exitMenuItem = new MenuItem("종료", new EventHandler(Exit));
             openMenuItem.DefaultItem = true;
@@ -46,7 +45,7 @@ namespace SystrayComponent
             notifyIcon = new NotifyIcon();
             notifyIcon.DoubleClick += new EventHandler(OpenApp);
             notifyIcon.Icon = SystrayComponent.Properties.Resources.baseline_touch_app_black_48_dqL_icon;
-            notifyIcon.ContextMenu = new ContextMenu(new MenuItem[]{ openMenuItem, sendMenuItem, batteryMenuItem, exitMenuItem });
+            notifyIcon.ContextMenu = new ContextMenu(new MenuItem[]{ openMenuItem, batteryMenuItem, exitMenuItem });
             notifyIcon.Visible = true;
             SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
 
@@ -58,10 +57,13 @@ namespace SystrayComponent
             await appListEntries.First().LaunchAsync();
         }
 
-        private async void SendToUWP(object sender, EventArgs e)
+        private async void OpenSetting(object sender, EventArgs e)
         {
+            IEnumerable<AppListEntry> appListEntries = await Package.Current.GetAppListEntriesAsync();
+            await appListEntries.First().LaunchAsync();
             ValueSet message = new ValueSet();
-            message.Add("content", "Message from Systray Extension");
+            message.Add("openSetting", "");
+            await Task.Delay(100);
             await SendToUWP(message);
         }
 
