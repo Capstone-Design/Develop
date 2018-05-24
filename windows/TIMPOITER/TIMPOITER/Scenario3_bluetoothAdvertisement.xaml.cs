@@ -1,30 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
+using Windows.Data.Json;
+using Windows.Devices.Bluetooth;
+using Windows.Devices.Bluetooth.Advertisement;
+using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Foundation;
-using Windows.Foundation.Collections;
+using Windows.Storage.Streams;
+using Windows.UI.Input.Preview.Injection;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
-using Windows.Storage.Streams;
-using Windows.Devices.Bluetooth;
-using Windows.Devices.Bluetooth.GenericAttributeProfile;
-using Windows.Devices.Bluetooth.Advertisement;
-using Windows.Devices.Enumeration;
-using Windows.Data.Json;
-using System.Diagnostics;
-using System.Threading.Tasks;
-using System.Collections;
-using Windows.UI.Input.Preview.Injection;
 using Windows.UI.Xaml.Shapes;
-using Windows.UI.Xaml.Automation.Peers;
-using Windows.UI.Xaml.Automation.Provider;
 
 namespace TIMPOITER
 {
@@ -56,19 +46,13 @@ namespace TIMPOITER
         private List<JsonArray> leftData = new List<JsonArray>();
         private List<JsonArray> rightData = new List<JsonArray>();
         private List<KeyValuePair<int, BluetoothLEAdvertisementReceivedEventArgs>> connectableDevice = new List<KeyValuePair<int, BluetoothLEAdvertisementReceivedEventArgs>>();
-        
+        private bool isScanning = false;
         private Guid TimpointerServiceUUID = BluetoothUuidHelper.FromShortId(0xffe0);
         private Guid TimpointerSerialCharacteristicUUID = BluetoothUuidHelper.FromShortId(0xffe1);
+        private BluetoothLEAdvertisementReceivedEventArgs[] connectedDeviceInfo = new BluetoothLEAdvertisementReceivedEventArgs[2];
 
-        // For touch
-        private long[] dataChecked = new long[2];
-        private bool inRange = false;
-        private Point prePoint = new Point(0, 0);
-        private double[,] sensorsMax = new double[2, 4];
-        private double screenW = 600;
-        private double screenH;
-        private long preInputTime;
-        private bool autoDetached = false;
+        private long leftTime = 0;
+        private long rightTime = 0;
 
         // For ValueChangeHandler
         // L : 0, R : 1
@@ -89,22 +73,6 @@ namespace TIMPOITER
             watcher.SignalStrengthFilter.OutOfRangeThresholdInDBm = -75;
             watcher.SignalStrengthFilter.OutOfRangeTimeout = TimeSpan.FromMilliseconds(2000);
             watcher.ScanningMode = BluetoothLEScanningMode.Active;
-            SetSensorsMax();
-            //DrawDot(10, 10);
-        }
-
-        private void SetSensorsMax()
-        {
-            screenH = screenW * h / w;
-            sensorsMax[0, 0] = screenH;
-            sensorsMax[0, 1] = screenH * Math.Cos(50 * Math.PI / 180);
-            sensorsMax[0, 2] = Math.Sqrt(screenH * screenH + screenW * screenW);
-            sensorsMax[0, 3] = screenW * Math.Cos(25 * Math.PI / 180);
-
-            for(int i = 0; i < 4; i++)
-            {
-                sensorsMax[1, i] = sensorsMax[0, i];
-            }
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -156,6 +124,7 @@ namespace TIMPOITER
             System.Threading.Tasks.Task.Delay(2000);
             System.Diagnostics.Debug.WriteLine(watcher.Status);
             System.Diagnostics.Debug.WriteLine("Watcher 시작");
+            isScanning = true;
             // BLE연결을 async로 동시에 진행하면 하나면 정상연결되어 연결 시도 관리 스레드 생성.
             Task t = Task.Factory.StartNew(() => {
                 BLEConnecter();
@@ -165,16 +134,17 @@ namespace TIMPOITER
         private void StopButton_Click(object sender, RoutedEventArgs e)
         {
             watcher.Stop();
+            isScanning = false;
             System.Diagnostics.Debug.WriteLine("Watcher 중지");
 
-            if(characteristics[0] != null)
+            if (characteristics[0] != null)
                 characteristics[0].ValueChanged -= ValueChangeHandlerL;
             if (characteristics[1] != null)
                 characteristics[1].ValueChanged -= ValueChangeHandlerR;
             for (int i = 0; i < 2; i++)
             {
                 deviceConnected[i] = 0;
-                
+
                 characteristics[i] = null;
             }
 
@@ -186,6 +156,7 @@ namespace TIMPOITER
 
         private void OnAdvertisementReceived(BluetoothLEAdvertisementWatcher watcher, BluetoothLEAdvertisementReceivedEventArgs eventArgs)
         {
+            
             int index;
             for (index = 0; index < DEVICE_MAC.Length; index++)
             {
@@ -193,7 +164,6 @@ namespace TIMPOITER
                 {
                     if (deviceConnected[index] == 0)
                     {
-                        ShowStr(string.Format("0x{0:X}", eventArgs.BluetoothAddress) + " Found");
                         connectableDevice.Add(new KeyValuePair<int, BluetoothLEAdvertisementReceivedEventArgs>(index, eventArgs));
                     }
                 }
@@ -202,13 +172,13 @@ namespace TIMPOITER
 
         private void BLEConnecter()
         {
-            while (!(deviceConnected[0] == 2 && deviceConnected[1] == 2))
+            while (!(deviceConnected[0] == 2 && deviceConnected[1] == 2) && isScanning == true)
             {
-                if(connectableDevice.Count > 0)
+                if (connectableDevice.Count > 0)
                 {
                     if (deviceConnected[0] != 1 && deviceConnected[1] != 1)
                     {
-                        if(deviceConnected[connectableDevice.ElementAt(0).Key] != 2)
+                        if (deviceConnected[connectableDevice.ElementAt(0).Key] != 2)
                         {
                             ConnectBLEDevice(connectableDevice.ElementAt(0).Value, connectableDevice.ElementAt(0).Key);
                         }
@@ -217,18 +187,30 @@ namespace TIMPOITER
                 }
                 Task.Delay(100);
             }
+            isScanning = false;
             watcher.Stop();
             if (deviceConnected[0] == 2 && deviceConnected[1] == 2)
             {
                 characteristics[1].ValueChanged += ValueChangeHandlerR;
                 characteristics[0].ValueChanged += ValueChangeHandlerL;
-                
-                //SendData(characteristics[0], "OK");
-                //SendData(characteristics[1], "OK");
-                ShowStr("연결완료");
+
+                ToastHelper.ShowToast("모듈 연결 완료");
+            
                 Task t = Task.Factory.StartNew(() => {
-                    ConsumeTouch();
+                    Touch.GetInstance().ConsumeTouch(ref leftData, ref rightData, ref isScanning);
                 });
+            }
+            while (true)
+            {
+                long current = currentTimeMillis();
+                if (current - leftTime > 1000)
+                {
+                    ConnectBLEDevice(connectedDeviceInfo[0], 0);
+                }
+                if (current - rightTime > 1000)
+                {
+                    ConnectBLEDevice(connectedDeviceInfo[1], 1);
+                }
             }
         }
 
@@ -249,29 +231,30 @@ namespace TIMPOITER
                         try
                         {
                             var result = await characteristics[index].WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify);
-                            ShowStr("Notification resigter " + result + device.Name);
+                            //ShowStr("Notification resigter " + result + device.Name);
                             if (result == GattCommunicationStatus.Success)
                             {
                                 // 처음 연결시 데이터를 보내 아두이노에서 시리얼 개통을함.
-                                //SendData(characteristics[index], " ");
                                 deviceConnected[index] = 2;
-                                //characteristics[index].ValueChanged += ValueChangeHandlerL;
+                                //characteristics[index].Service.Session.MaintainConnection = true;
+                                connectedDeviceInfo[index] = eventArgs;
+                                //Debug.WriteLine(characteristics[index].Service.Session.SessionStatus);
                                 return;
                             }
                         }
                         catch (Exception e)
                         {
-                            ShowStr("Notify set error" + e.StackTrace);
+                            //ShowStr("Notify set error" + e.StackTrace);
                         }
                     }
                     else
                     {
-                        ShowStr("Find charateristic error" + serialCharsticsResult.Status);
+                        //ShowStr("Find charateristic error" + serialCharsticsResult.Status);
                     }
                 }
                 else
                 {
-                    ShowStr("Find service error" + serviceResult.Status);
+                    //ShowStr("Find service error" + serviceResult.Status);
                 }
             }
             catch (Exception e)
@@ -288,6 +271,7 @@ namespace TIMPOITER
 
         private void ValueChangeHandlerL(GattCharacteristic characteristic, GattValueChangedEventArgs args)
         {
+            rightTime = currentTimeMillis();
             int index = 0;
             string str = "";
             var reader = DataReader.FromBuffer(args.CharacteristicValue);
@@ -297,7 +281,6 @@ namespace TIMPOITER
             str = System.Text.Encoding.UTF8.GetString(input);
             if (str.Contains("\n"))
             {
-                //Debug.WriteLine(str);
                 string[] splitted = str.Split(stringSeparators, StringSplitOptions.None);
 
                 string toParse = jsonStr[index];
@@ -311,33 +294,28 @@ namespace TIMPOITER
                 try
                 {
                     JsonArray root = JsonValue.Parse(toParse).GetArray();
-                    if(root.Count == 4)
+                    if (root.Count == 4)
                     {
                         leftData.Add(root);
-                        DrawDetect(0, root);
-
-                        ShowData(root, 0);
-                        
                     }
                 }
                 catch (Exception e)
                 {
                     //Debug.WriteLine("L Parse error" + e.StackTrace);
                     // Do Nothing
-                    DrawDetect(0, null);
                 }
                 jsonStr[index] = splitted[1];
             }
             else
             {
                 jsonStr[index] += str;
-                DrawDetect(0, null);
             }
 
         }
 
         private void ValueChangeHandlerR(GattCharacteristic characteristic, GattValueChangedEventArgs args)
         {
+            rightTime = currentTimeMillis();
             int index = 1;
             string str = "";
             var reader = DataReader.FromBuffer(args.CharacteristicValue);
@@ -347,7 +325,6 @@ namespace TIMPOITER
             str = System.Text.Encoding.UTF8.GetString(input);
             if (str.Contains("\n"))
             {
-                //Debug.WriteLine(str);
                 string[] splitted = str.Split(stringSeparators, StringSplitOptions.None);
 
                 string toParse = jsonStr[index];
@@ -365,60 +342,19 @@ namespace TIMPOITER
                     if (root.Count == 4)
                     {
                         rightData.Add(root);
-                        DrawDetect(1, root);
-                        ShowData(root, 1);
                     }
                 }
                 catch (Exception e)
                 {
                     //Debug.WriteLine("R Parse error" + e.StackTrace);
-                    DrawDetect(1, null);
                 }
                 jsonStr[index] = splitted[1];
             }
             else
             {
                 jsonStr[index] += str;
-                DrawDetect(1, null);
             }
 
-        }
-
-        private async void ShowStr(string str)
-        {
-            await this.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-            {
-                ReceivedAdvertisementListBox.Items.Add(str);
-
-                ReceivedAdvertisementListBox.ScrollIntoView(ReceivedAdvertisementListBox.Items[ReceivedAdvertisementListBox.Items.Count - 1]);
-            });
-            Debug.WriteLine(str);
-        }
-
-        private async void ShowData(JsonArray data, int index)
-        {
-            ListBox listbox;
-            if(index == 0)
-            {
-                listbox = LeftViewer;
-            }
-            else
-            {
-                listbox = RightViewer;
-            }
-            string str = "";
-            for(int i = 0; i < data.Count; i++)
-            {
-                str += data[i].GetNumber().ToString() + "\t";
-            }
-            await this.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-            {
-                listbox.Items.Clear();
-                listbox.Items.Add(str);
-                
-                //listbox.ScrollIntoView(listbox.Items[listbox.Items.Count - 1]);
-            });
-            Debug.WriteLine(str);
         }
 
         private async void OnAdvertisementWatcherStopped(BluetoothLEAdvertisementWatcher watcher, BluetoothLEAdvertisementWatcherStoppedEventArgs eventArgs)
@@ -429,326 +365,7 @@ namespace TIMPOITER
             });
         }
 
-        private async void SendData(GattCharacteristic characteristic, string str)
-        {
-            var dataWriter = new Windows.Storage.Streams.DataWriter();
-            dataWriter.WriteString(str);
-            var result = await characteristic.WriteValueAsync(dataWriter.DetachBuffer());
-
-        }
-
-        private void ConsumeTouch()
-        {
-            while (true)
-            {
-                if (currentTimeMillis() - preInputTime > 400 && autoDetached == false)
-                {
-                    autoDetached = true;
-                    inRange = false;
-                    Touch(2, prePoint.X, prePoint.Y);
-                }
-
-                if (leftData.Count > 0)
-                {
-                    if (rightData.Count > 0)
-                    {
-                        try
-                        {
-                            JsonArray left = leftData.First();
-                            leftData.RemoveAt(0);
-                            JsonArray right = rightData.First();
-                            rightData.RemoveAt(0);
-                            double leftDistance = Calib(left, 0);
-                            double rightDistance = Calib(right, 1);
-                            Point point;
-                            if (leftDistance >= 0 && rightDistance >= 0)
-                            {
-                                point = CalcXY(leftDistance, rightDistance);
-                            }
-                            else
-                            {
-                                continue;
-                            }
-                            Debug.WriteLine(point);
-                            ShowStr(point.ToString());
-                            if (point.X >= 0 && point.X <= w && point.Y > 0 && point.Y <= h)
-                            {
-                                
-                                if (inRange)
-                                {
-                                    Touch(1, point.X, point.Y);
-                                }
-                                else
-                                {
-                                    inRange = true;
-                                    Touch(0, point.X, point.Y);
-                                }
-                                prePoint = point;
-                                preInputTime = currentTimeMillis();
-                                autoDetached = false;
-                            }
-                            else if(inRange)
-                            {
-                                autoDetached = false;
-                                inRange = false;
-                                Touch(2, prePoint.X, prePoint.Y);
-                            }
-                        }
-                        catch
-                        {
-
-                        }
-                    }
-                    else
-                    {
-                        leftData.Clear();
-                        //dataChecked[0];
-                        Task.Delay(200);
-                    }
-                }
-                else
-                {
-                    rightData.Clear();
-                    Task.Delay(200);
-                    //dataChecked[0];
-                }
-            }
-        }
-        private int w = 1920;
-        private int h = 1080;
-        private Point CalcXY(double l, double r)
-        {
-            double x = (w*w + l*l - r*r) / (2 * w);
-            double y = Math.Sqrt((Math.Abs(l*l - x*x)));
-            y = h - y;
-
-            //ShowStr("" + x + " " + y);
-            return new Point(x, y);
-        }
-
-        
-        private double Calib(JsonArray array, int deviceIndex)
-        {
-            double shortest = 8000/screenW*w;
-            for(int i = 0; i < array.Count; i++)
-            {
-                double raw = array[i].GetNumber();
-                raw = raw - 45;
-
-                if (raw > 0)
-                {
-                    raw = raw / screenW * w;
-                    if (raw < shortest)
-                    {
-                        shortest = raw;
-                    }
-                }
-
-            }
-            if (shortest < 8000)
-            {
-                // TODO 가로, 세로 비율이 다를 수 있음.
-                return shortest;
-            }
-            else
-            {
-                return -1;
-            }
-
-        }
-
-        private static InputInjector inputInjector;
-        private InjectedInputRectangle touchContact = new InjectedInputRectangle
-        {
-            Top = 50,
-            Bottom = 50,
-            Left = 40,
-            Right = 40
-        };
-
-        private int Touch(int type, double X, double Y)
-        {
-            if(inputInjector == null)
-            {
-                inputInjector = InputInjector.TryCreate();
-                inputInjector.InitializePenInjection(InjectedInputVisualizationMode.Default);
-                // Default는 기본 터치 이펙트, Indirect는 원에 +표시가 있는 마크가 표시됨.
-                //inputInjector.InitializeTouchInjection(InjectedInputVisualizationMode.Default);
-            }
-            InjectedInputPointerOptions pointerOption;
-            Double pressure;        // 0.0~ 1.0 (1024단계)
-            switch (type)
-            {
-                case 0:
-                    pointerOption = InjectedInputPointerOptions.InRange;
-                    pressure = 1.0;
-                    break;
-                case 1:
-                    pointerOption = InjectedInputPointerOptions.InContact;
-                    pressure = 1.0;
-                    break;
-                case 2:
-                    pointerOption = InjectedInputPointerOptions.PointerUp;
-                    pressure = 0;
-                    break;
-                default:
-                    return -1;
-            }
-            var location = new InjectedInputPoint { PositionX = (int)X, PositionY = (int)Y };
-            try
-            {
-                inputInjector.InjectTouchInput
-                (
-                    new List<InjectedInputTouchInfo>
-                    {
-                        new InjectedInputTouchInfo
-                        {
-                            Contact = touchContact,
-                            PointerInfo = new InjectedInputPointerInfo
-                            {
-                                PixelLocation = location,
-                                PointerOptions = pointerOption,
-                                PointerId = 1,
-                            },
-                            Pressure = pressure,
-                            TouchParameters =
-                            InjectedInputTouchParameters.Pressure |
-                            InjectedInputTouchParameters.Contact
-                        }
-                    }
-                );
-                DrawDot(X, Y);
-                //ShowStr("Touch at : "+ X + " " + Y);
-                return 1;
-            }
-            catch (Exception e)
-            {
-                return -2;
-            }
-        }
-        private List<Ellipse> dotList = new List<Ellipse>();
-        private async void DrawDot(double x, double y)
-        {
-            await Dispatcher.TryRunAsync(Windows.UI.Core.CoreDispatcherPriority.High, () =>
-            {
-                int dotSize = 10;
-
-                Ellipse currentDot = new Ellipse
-                {
-                    Stroke = new SolidColorBrush(Windows.UI.Colors.SteelBlue),
-                    StrokeThickness = 3
-                };
-                Canvas.SetZIndex(currentDot, 3);
-                currentDot.Height = dotSize;
-                currentDot.Width = dotSize;
-                currentDot.Fill = new SolidColorBrush(Windows.UI.Colors.SteelBlue);
-                currentDot.Margin = new Thickness(x, y, 0, 0); // Sets the position.
-                dotList.Add(currentDot);
-                myCanvas.Children.Add(currentDot);
-                if(dotList.Count > 10)
-                {
-                    for(int i = 0; i < dotList.Count-10; i++)
-                    {
-                        myCanvas.Children.Remove(dotList[i]);
-                        dotList.RemoveAt(i);
-                    }
-                }
-                
-            });
-        }
-
-        private Line[,] preline = new Line[2,3];
-        private async void DrawDetect(int direction, JsonArray array)
-        {
-            double distance = 9999;
-            int index = -1;
-            if(array != null)
-            {
-                for (int i = 0; i < 4; i++)
-                {
-                    double raw = array[i].GetNumber();
-                    raw = raw - 45;
-                    //raw *= 1.5;
-                    if (raw > 0 && raw < sensorsMax[direction, i])
-                    {
-                        raw = raw / screenW * w;
-                        if (raw < distance)
-                        {
-                            distance = raw;
-                            index = i;
-                        }
-                    }
-                }
-            }
-            if (index == -1) return;
-            await Dispatcher.TryRunAsync(Windows.UI.Core.CoreDispatcherPriority.High, () =>
-            {
-                if(preline[direction, 0] != null)
-                {
-                    myCanvas.Children.Remove(preline[direction, 0]);
-                    myCanvas.Children.Remove(preline[direction, 1]);
-                    myCanvas.Children.Remove(preline[direction, 2]);
-                }
-
-                if (array != null)
-                {
-                    var line1 = new Line();
-                    line1.Stroke = new SolidColorBrush(Windows.UI.Colors.Red);
-                    var line2 = new Line();
-                    line2.Stroke = new SolidColorBrush(Windows.UI.Colors.Blue);
-                    var line3 = new Line();
-                    line3.Stroke = new SolidColorBrush(Windows.UI.Colors.Black);
-                    double dgree;
-
-                    if (direction == 0)
-                    {
-                        line1.X1 = 0;
-                        line1.Y1 = h;
-                        dgree = index * 25 * Math.PI / 180;
-                        //line1.X2 = distance * Math.Cos(dgree);
-                        line1.X2 = distance * Math.Cos(dgree);
-                        line1.Y2 = h - distance * Math.Sin(dgree);
-
-                        dgree = dgree + 25 * Math.PI / 180;
-                        double x = line1.X2;
-                        double y = line1.Y2;
-                        line2.X1 = x;
-                        line2.Y1 = y;
-
-                        line2.X2 = x * Math.Cos(dgree) - (h - y) * Math.Sin(dgree);
-                        line2.Y2 = h - x * Math.Sin(dgree) + (h - y) * Math.Cos(dgree);
-                    }
-                    else
-                    {
-                        line1.X1 = w;
-                        line1.Y1 = h;
-                        dgree = index * 25 * Math.PI / 180;
-                        line1.X2 = w - distance * Math.Cos(dgree);
-                        line1.Y2 = h - distance * Math.Sin(dgree);
-
-                        dgree = dgree + 25 * Math.PI / 180;
-                        double x = line1.X2;
-                        double y = line1.Y2;
-                        line2.X1 = x;
-                        line2.Y1 = y;
-
-                        line2.X2 = (w - x) * Math.Cos(dgree) - (h - y) * Math.Sin(dgree);
-                        line2.Y2 = h - (w - x) * Math.Sin(dgree) + (h - y) * Math.Cos(dgree);
-                    }
-                    line3.X1 = line2.X2;
-                    line3.Y1 = line2.Y2;
-                    line3.X2 = line1.X1;
-                    line3.Y2 = line1.Y1;
-
-                    preline[direction, 0] = line1;
-                    preline[direction, 1] = line2;
-                    preline[direction, 2] = line3;
-                    myCanvas.Children.Add(line1);
-                    myCanvas.Children.Add(line2);
-                    myCanvas.Children.Add(line3);
-                }
-            });
-        }
+      
     }
 
 }

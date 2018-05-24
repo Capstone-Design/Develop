@@ -5,6 +5,10 @@ using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
+using Windows.ApplicationModel.AppService;
+using Windows.ApplicationModel.Background;  
+using Windows.UI.Core;
+using Windows.UI.Popups;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.UI.Xaml;
@@ -14,6 +18,8 @@ using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+using Windows.UI.ViewManagement;
+
 
 namespace TIMPOITER
 {
@@ -26,10 +32,110 @@ namespace TIMPOITER
         /// Singleton 응용 프로그램 개체를 초기화합니다. 이것은 실행되는 작성 코드의 첫 번째
         /// 줄이며 따라서 main() 또는 WinMain()과 논리적으로 동일합니다.
         /// </summary>
+        /// 
+        public static BackgroundTaskDeferral AppServiceDeferral = null;
+        public static AppServiceConnection Connection = null;
+        public static bool IsForeground = false;
+
         public App()
         {
             this.InitializeComponent();
             this.Suspending += OnSuspending;
+
+            //트레이 아이콘을 위한 코드 
+            this.LeavingBackground += App_LeavingBackground;
+            this.EnteredBackground += App_EnteredBackground;
+            
+            Windows.UI.ViewManagement.ApplicationView.PreferredLaunchViewSize = new Windows.Foundation.Size(700, 500);
+            Windows.UI.ViewManagement.ApplicationView.PreferredLaunchWindowingMode = Windows.UI.ViewManagement.ApplicationViewWindowingMode.PreferredLaunchViewSize;
+            
+        }
+
+        private void App_EnteredBackground(object sender, EnteredBackgroundEventArgs e)
+        {
+            IsForeground = false;
+        }
+
+        private void App_LeavingBackground(object sender, LeavingBackgroundEventArgs e)
+        {
+            IsForeground = true;
+        }
+
+        protected override void OnBackgroundActivated(BackgroundActivatedEventArgs args)
+        {
+            // connection established from the fulltrust process
+            base.OnBackgroundActivated(args);
+            if (args.TaskInstance.TriggerDetails is AppServiceTriggerDetails details)
+            {
+                AppServiceDeferral = args.TaskInstance.GetDeferral();
+                args.TaskInstance.Canceled += OnTaskCanceled;
+                Connection = details.AppServiceConnection;
+                Connection.RequestReceived += OnRequestReceived;
+            }
+        }
+
+        private async void OnRequestReceived(AppServiceConnection sender, AppServiceRequestReceivedEventArgs args)
+        {
+            if (args.Request.Message.ContainsKey("content"))
+            {
+                object message = null;
+                args.Request.Message.TryGetValue("content", out message);
+                if (App.IsForeground)
+                {
+                    await Windows.ApplicationModel.Core.CoreApplication.MainView.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, new DispatchedHandler(async () =>
+                    {
+                        MessageDialog dialog = new MessageDialog(message.ToString());
+                        await dialog.ShowAsync();
+                    }));
+                }
+                else
+                {
+                    ToastHelper.ShowToast(message.ToString());
+                }
+            }
+
+            if (args.Request.Message.ContainsKey("resolutionchaged"))
+            {
+                object message = null;
+                args.Request.Message.TryGetValue("resolutionchaged", out message);
+                int a = Convert.ToInt32(message);
+                SettingValue.GetInstance().ResolutionChanged(a / 10000, a % 10000);
+                System.Diagnostics.Debug.WriteLine("resolutionchaged");
+
+                ToastHelper.ShowToast("해상도 변경 : " + a / 10000 + " X " + a % 10000);
+
+            }
+
+            if (args.Request.Message.ContainsKey("openSetting"))
+            {
+                if (App.IsForeground)
+                {
+                    MainPage.Current.ScenarioControl_Settting();
+                }
+            }
+
+            if (args.Request.Message.ContainsKey("battery"))
+            {
+                object message = null;
+                args.Request.Message.TryGetValue("battery", out message);
+                int a = Convert.ToInt32(message);
+
+                ToastHelper.ShowToast("왼쪽 모듈 배터리    : " + a / 10000 + "%\n오른쪽 모듈 배터리 : " + a % 10000 + "%");
+
+            }
+
+            if (args.Request.Message.ContainsKey("exit"))
+            {
+                App.Current.Exit();
+            }
+        }
+
+        private void OnTaskCanceled(IBackgroundTaskInstance sender, BackgroundTaskCancellationReason reason)
+        {
+            if (AppServiceDeferral != null)
+            {
+                AppServiceDeferral.Complete();
+            }
         }
 
         /// <summary>
@@ -92,8 +198,14 @@ namespace TIMPOITER
         /// <param name="e">일시 중단 요청에 대한 세부 정보입니다.</param>
         private void OnSuspending(object sender, SuspendingEventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine("stop");
+
             var deferral = e.SuspendingOperation.GetDeferral();
             //TODO: 응용 프로그램 상태를 저장하고 백그라운드 작업을 모두 중지합니다.
+            if(AppServiceDeferral != null)
+            {
+                AppServiceDeferral.Complete();
+            }
             deferral.Complete();
         }
     }

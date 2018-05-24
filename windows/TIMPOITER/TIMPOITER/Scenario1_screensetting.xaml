@@ -14,16 +14,17 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <StackPanel Margin="0,0,0,10">
-            <TextBlock Text="Screan set:" />
-            <TextBlock Text="resolution:"/>
-            <TextBlock TextWrapping="Wrap">
-                hi
-            </TextBlock>
+            <TextBlock Text="윈도우 해상도 및 스크린 크기 설정" />
+
 
         </StackPanel>
-        <TextBox x:Name="TextBox_x" HorizontalAlignment="Left" Margin="366,345,0,-377" Grid.RowSpan="2" Text="TextBox" VerticalAlignment="Top" Width="128"/>
-        <TextBlock HorizontalAlignment="Left" Margin="297,347,0,-367" Grid.RowSpan="2" Text="해상도 :" TextWrapping="Wrap" VerticalAlignment="Top"/>
-        <TextBox x:Name="TextBox_y" HorizontalAlignment="Left" Margin="521,345,0,-377" Grid.RowSpan="2" Text="TextBox" VerticalAlignment="Top"/>
+        <TextBox x:Name="TextBox_x" HorizontalAlignment="Left" Margin="95,65,0,-97" Grid.RowSpan="2" Text="TextBox" VerticalAlignment="Top" Width="104" IsReadOnly="True"/>
+        <TextBlock HorizontalAlignment="Left" Margin="31,67,0,-87" Grid.RowSpan="2" Text="해상도 :" TextWrapping="Wrap" VerticalAlignment="Top"/>
+        <TextBox x:Name="TextBox_y" HorizontalAlignment="Left" Margin="216,65,0,-97" Grid.RowSpan="2" Text="TextBox" VerticalAlignment="Top" IsReadOnly="True" Width="98"/>
+        <TextBox x:Name="screensize_x" HorizontalAlignment="Left" Margin="96,107,0,-139" Grid.RowSpan="2" Text="TextBox" VerticalAlignment="Top" Width="101"/>
+        <TextBox x:Name="screensize_y" HorizontalAlignment="Left" Height="22" Margin="211,77,0,-99" Grid.Row="1" Text="TextBox" VerticalAlignment="Top" Width="103" RenderTransformOrigin="0.48,0.633"/>
+        <Button Content="저장" HorizontalAlignment="Left" Height="32" Margin="344,77,0,-109" Grid.Row="1" VerticalAlignment="Top" Width="95" Click="Button_Click"/>
+        <TextBlock HorizontalAlignment="Left" Height="24" Margin="0,81,0,-105" Grid.Row="1" Text="스크린 크기 : " TextWrapping="Wrap" VerticalAlignment="Top" Width="109"/>
 
     </Grid>
 </Page>

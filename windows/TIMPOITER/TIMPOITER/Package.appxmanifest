@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" IgnorableNamespaces="uap mp rescap">
-  <Identity Name="f9e32ad7-c08a-43c4-8170-15ed5ad9b5b0" Publisher="CN=박건형" Version="1.0.0.0" />
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10" IgnorableNamespaces="uap mp rescap">
+  <Identity Name="f9e32ad7-c08a-43c4-8170-15ed5ad9b5b9" Publisher="CN=minjae" Version="1.0.2.0" />
   <mp:PhoneIdentity PhoneProductId="f9e32ad7-c08a-43c4-8170-15ed5ad9b5b9" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
     <DisplayName>TIMPOITER</DisplayName>
@@ -16,15 +16,35 @@
   <Applications>
     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="TIMPOITER.App">
       <uap:VisualElements DisplayName="TIMPOITER" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" Description="TIMPOITER" BackgroundColor="transparent">
-        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" Square71x71Logo="Assets\Square71x71Logo.png" Square310x310Logo="Assets\Square310x310Logo.png">
         </uap:DefaultTile>
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
       </uap:VisualElements>
+      <Extensions>
+        <Extension Category="windows.backgroundTasks" EntryPoint="BackgroundTask.BLETask">
+          <BackgroundTasks>
+            <Task Type="deviceConnectionChange" />
+            <Task Type="bluetooth" />
+          </BackgroundTasks>
+        </Extension>
+        <Extension Category="windows.backgroundTasks" EntryPoint="BackgroundTask.BaseTask">
+          <BackgroundTasks>
+            <Task Type="systemEvent" />
+          </BackgroundTasks>
+        </Extension>
+        <uap:Extension Category="windows.appService">
+          <uap:AppService Name="SystrayExtensionService" />
+        </uap:Extension>
+        <desktop:Extension Category="windows.fullTrustProcess" Executable="Win32\SystrayComponent.exe" />
+      </Extensions>
     </Application>
   </Applications>
   <Capabilities>
-    <Capability Name="internetClient" />
     <rescap:Capability Name="inputInjectionBrokered" />
+    <rescap:Capability Name="extendedBackgroundTaskTime" />
+    <rescap:Capability Name="extendedExecutionUnconstrained" />
+    <rescap:Capability Name="runFullTrust" />
+    <rescap:Capability Name="confirmAppClose" />
     <DeviceCapability Name="bluetooth" />
   </Capabilities>
 </Package>

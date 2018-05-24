@@ -16,9 +16,7 @@
             </Grid.RowDefinitions>
             <StackPanel Margin="0,0,0,10">
                 <TextBlock TextWrapping="Wrap">
-                    Scanning for a particular LE advertisement containing a matching manufacturer data section and 
-                    above a certain RSSI threshold. This scenario requires Scenario 2 or 4 to run on another Windows platform
-                    in close proximity of this one. Press Run button to begin scanning. Received advertisements are shown below.
+                   블루투스 연결을 시도하고 연결 후 작업을 시작합니다.
                 </TextBlock>
             </StackPanel>
 
@@ -36,33 +34,10 @@
                         </Grid.RowDefinitions>
                         <Button x:Name="RunButton" Grid.Row="0" Grid.Column="0" Content="Run" Margin="5,10,10,0" Click="RunButton_Click"/>
                         <Button x:Name="StopButton" Grid.Row="0" Grid.Column="1" Content="Stop" Margin="5,10,10,0" Click="StopButton_Click"/>
-                        <ListBox
-                            x:Name="ReceivedAdvertisementListBox"
-                            Grid.Row="1"
-                            Grid.ColumnSpan="2"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Top"
-                            Height="300"
-                            Margin="0,10,0,0"
-                            ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                            ScrollViewer.HorizontalScrollMode="Auto"/>
-
-                        <ListBox x:Name="LeftViewer"
-                                       Grid.Row="2"
-                            Grid.Column="0"
-                                       Height="300"
-                                 />
-
-
-                        <ListBox x:Name="RightViewer"
-                                       Grid.Row="2"
-                            Grid.Column="1"
-                                       Height="300"
-                                 />
                     </Grid>
                 </StackPanel>
             </ScrollViewer>
-            
+
 
             <Border x:Name="ErrorBorder" Background="Red" Grid.Row="2"/>
             <!--<TextBlock x:Name="StatusBlock" Grid.Row="2" Margin="12, 10, 12, 10" Visibility="Collapsed"/>-->

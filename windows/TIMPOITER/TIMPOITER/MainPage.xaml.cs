@@ -1,23 +1,16 @@
 ﻿
-using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
+using Windows.ApplicationModel;
+using Windows.ApplicationModel.Background;
 using Windows.Foundation;
-using Windows.Foundation.Collections;
+using Windows.Foundation.Metadata;
+using Windows.UI.Core.Preview;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
-using Windows.UI.Input.Preview.Injection;
 using Windows.UI.ViewManagement;
-using Windows.Graphics.Display;
-
 namespace TIMPOITER
 {
     /// <summary>
@@ -33,6 +26,55 @@ namespace TIMPOITER
             this.InitializeComponent();
             Current = this;
             SampleTitle.Text = FEATURE_NAME;
+       
+
+            SystemNavigationManagerPreview mgr =
+                SystemNavigationManagerPreview.GetForCurrentView();
+            mgr.CloseRequested += SystemNavigationManager_CloseRequested;
+            Systrayicon();
+            //BackBaseTask();
+        }
+
+        //테스트 용 컴퓨터 시간대를 변경시 실행 
+        public void BackBaseTask()
+        {
+            var taskRegistered = false;
+            var exampleTaskName = "BaseTask";
+
+            foreach (var task1 in BackgroundTaskRegistration.AllTasks.Values)
+            {
+                if (task1.Name == exampleTaskName)
+                {
+                    taskRegistered = true;
+                    break;
+                }
+            }
+
+            if (!taskRegistered)
+            {
+                var builder = new BackgroundTaskBuilder();
+
+                builder.Name = exampleTaskName;
+                builder.TaskEntryPoint = "BackgroundTask.BaseTask";
+                builder.SetTrigger(new SystemTrigger(SystemTriggerType.TimeZoneChange, false));
+
+                builder.AddCondition(new SystemCondition(SystemConditionType.UserPresent));
+
+                BackgroundTaskRegistration task = builder.Register();
+
+                task.Completed += new BackgroundTaskCompletedEventHandler(OnCompleted);
+            }
+
+        }
+
+        private void OnCompleted(IBackgroundTaskRegistration task, BackgroundTaskCompletedEventArgs args)
+        {
+            System.Diagnostics.Debug.WriteLine("back ground task sss");
+
+            var settings = Windows.Storage.ApplicationData.Current.LocalSettings;
+            var key = task.TaskId.ToString();
+            var message = settings.Values[key].ToString();
+            System.Diagnostics.Debug.WriteLine(message);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -49,7 +91,27 @@ namespace TIMPOITER
             }
         }
 
+        // 트레이 아이콘 생성 
+        public async void Systrayicon()
+        {
+            if (ApiInformation.IsApiContractPresent("Windows.ApplicationModel.FullTrustAppContract", 1, 0))
+            {
+                await FullTrustProcessLauncher.LaunchFullTrustProcessForCurrentAppAsync();
+            }
 
+            
+        }
+
+        
+        // X 버튼 누르시에 할 일을 추가해야함 
+        private void SystemNavigationManager_CloseRequested(object sender, SystemNavigationCloseRequestedPreviewEventArgs e)
+        {
+            Deferral deferral = e.GetDeferral();
+            
+            
+            e.Handled = false;
+            deferral.Complete();
+        }
         private void ScenarioControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             // Clear the status block when navigating scenarios.
@@ -60,10 +122,22 @@ namespace TIMPOITER
             if (s != null)
             {
                 ScenarioFrame.Navigate(s.ClassType);
-                if (Window.Current.Bounds.Width < 640)
-                {
+                //if (Window.Current.Bounds.Width < 640)
+                //{
                     Splitter.IsPaneOpen = false;
-                }
+                //}
+            }
+        }
+
+        public void ScenarioControl_Settting()
+        {
+            Scenario s = new Scenario() { Title = "Screen Settting", ClassType = typeof(Scenario1_screensetting) };
+            if (s != null)
+            {
+                ScenarioFrame.Navigate(s.ClassType);
+                
+                Splitter.IsPaneOpen = false;
+               
             }
         }
 
@@ -97,181 +171,4 @@ namespace TIMPOITER
         }
     }
 
-
-
-    //    private void Button_Click(object sender, RoutedEventArgs e)
-    //    {
-    //        //var info = new InjectedInputMouseInfo();
-    //        //info.MouseOptions = InjectedInputMouseOptions.Move;
-    //        //info.DeltaX = 100;
-
-    //        //InputInjector inputInjector = InputInjector.TryCreate();
-    //        //inputInjector.InjectMouseInput(new[] { info });
-
-    //        InputInjector inputInjector = InputInjector.TryCreate();
-
-    //        if (inputInjector != null)
-    //        {
-    //            try
-    //            {
-    //                inputInjector.InitializeTouchInjection(
-    //                    InjectedInputVisualizationMode.Default);
-
-
-    //                inputInjector.InjectTouchInput(
-    //                    new List<InjectedInputTouchInfo>
-    //                {
-    //            new InjectedInputTouchInfo
-    //            {
-    //                Contact = new InjectedInputRectangle {
-    //                    Top = 500, Bottom = 500, Left = 400, Right = 400 },
-    //                PointerInfo = new InjectedInputPointerInfo
-    //                {
-
-    //                    PixelLocation = new InjectedInputPoint
-    //                    {
-    //                        PositionX = 400, PositionY = 500
-    //                    },
-    //                    PointerOptions = InjectedInputPointerOptions.InContact,
-    //                    PointerId = 2
-    //                },
-    //                Pressure = 1.0,
-    //                TouchParameters =
-    //                InjectedInputTouchParameters.Pressure |
-    //                InjectedInputTouchParameters.Contact
-    //            }
-    //                });
-
-    //               // System.Threading.Tasks.Task.Delay(10).Wait();
-
-    //                inputInjector.InjectTouchInput(
-    //                    new List<InjectedInputTouchInfo> {
-    //            new InjectedInputTouchInfo {
-    //                Contact = new InjectedInputRectangle
-    //                {
-    //                    Top = 500,
-    //                    Bottom = 500,
-    //                    Left = 400,
-    //                    Right = 400
-    //                },
-    //                PointerInfo = new InjectedInputPointerInfo {
-    //                    PixelLocation = new InjectedInputPoint {
-    //                        PositionX = 400, PositionY = 500
-    //                    },
-    //                    PointerOptions = InjectedInputPointerOptions.PointerUp,
-    //                    PointerId = 2,
-    //                },
-    //                Pressure = 0.0,
-    //                TouchParameters =
-    //                InjectedInputTouchParameters.Pressure |
-    //                InjectedInputTouchParameters.Contact
-    //            }
-    //                });
-    //            }
-    //            catch (ArgumentException args)
-    //            {
-
-    //            }
-    //        }
-    //    }
-    //}
-
-    public class SettingValue
-    {
-        private static SettingValue instance;
-        private static int[] screensize = new int[2];
-        private static int[] resolution = new int[2];
-        private static double[] calibration = new double[2];
-        //arduino = new [2];
-        private int firstStart;
-
-        private SettingValue() { }
-
-        public static SettingValue GetInstance()
-        {
-            if(instance == null)
-            {
-                instance = new SettingValue();
-            }
-            return instance;
-        }
-
-        //해상도가 변경되었을 때의 설정 변경
-        public void ResolutionChanged()
-        {
-
-        }
-
-        //디스플레이 사이즈 저장 
-        public void SetScreen(int[] size)
-        {
-            screensize[0] = size[0];
-            screensize[1] = size[1];
-        }
-
-        // 해상도 가져오기 및 저장 
-        public int[] GetResolution()
-        {
-            resolution[0] = (int)DisplayInformation.GetForCurrentView().ScreenWidthInRawPixels;
-            resolution[1] = (int)DisplayInformation.GetForCurrentView().ScreenHeightInRawPixels;
-            return resolution;
-        }
-
-        /*public int* GetBattery()
-        {
-
-            return &; 
-        }*/
-    }
-
-    public class Touch
-    {
-        // public
-        //vector<long, int, int> distance;
-        //vector<int, int> start;
-        //InjectedInputTouchInfo contact;   //터치 포인터 클래스 
-        //InputInjector inputInjector = InputInjector.TryCreate();
-
-        public Touch()
-        {
-            //inputInjector.InitializeTouchInjection(InjectedInputVisualizationMode.Indirect);
-            //inputInjector.InjectTouchInput(new List<InjectedInputTouchInfo>
-            //{
-            //    new InjectedInputTouchInfo
-            //    {
-            //        Contact = new InjectedInputRectangle
-            //        {
-            //            Top = 50, Bottom = 50, Left = 40, Right = 40
-            //        },
-
-            //        PointerInfo = new InjectedInputPointerInfo
-            //        {
-            //            PixelLocation = new InjectedInputPoint
-            //            {
-            //                PositionX = 40, PositionY = 50
-            //            },
-
-            //            PointerOptions = InjectedInputPointerOptions.InContact,
-            //            PointerId = 1
-            //        },
-
-            //        Pressure = 1.0,
-            //        TouchParameters = InjectedInputTouchParameters.Pressure | InjectedInputTouchParameters.Contact
-
-            //    }
-            //});
-            
-        }
-
-        public void TouchInput(char type, int x, int y)
-        {
-            
-
-        }
-
-    }
-
-   
-
-    
 }
