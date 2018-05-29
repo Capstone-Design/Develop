@@ -19,9 +19,9 @@ int test = 0;
 void setup()
 {
   hm10.begin(9600);
-  Serial.begin(9600);
+  //Serial.begin(9600);
   manager = Sensors(SENSOR_COUNT, SENSOR1_XSHUT, SENSOR2_XSHUT, SENSOR3_XSHUT, SENSOR4_XSHUT );
-  batt = Battery(5010, 3200, 900);
+  batt = Battery();
 }
 
 void loop()
@@ -37,14 +37,13 @@ void loop()
 //    hm10.write(data);
 //  }
 //delay(100);
-  //if (hm10.available()>0) {
+
+  if (hm10.available()>0) {
        int distance[SENSOR_COUNT];
        for(int i = 0; i < SENSOR_COUNT; i++){
          distance[i] = manager.GetDistance(i);
         }
        manager.SendDistance(&hm10, "1", distance);
-       // TODO RefreshPercentage를 통해 보내도록 설정.
-       //hm10.println(bat);
-       //Serial.print(batt.ReadVcc());
-  //}
+       batt.RefreshPercentage(&hm10);
+  }
 }
