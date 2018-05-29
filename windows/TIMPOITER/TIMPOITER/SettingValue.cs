@@ -19,7 +19,7 @@ namespace TIMPOITER
         private static int[] screensize = new int[2];
         private static int[] resolution = new int[2];
         private static double[] calibration = new double[2];
-
+        private static string[] sensorName = {"왼쪽", "오른쪽" };
 
         //arduino = new [2];
         //private int firstStart;
@@ -87,6 +87,32 @@ namespace TIMPOITER
         {
             return &; 
         }*/
+
+        public void SetBattery(int index, int batt)
+        {
+            string current = "battery";
+            if (index == 0)
+            {
+                current += 1;
+            }
+            else
+            {
+                current += 2;
+            }
+            try
+            {
+                int currentBatt = int.Parse(localSettings.Values[current].ToString());
+                if(currentBatt > batt)
+                {
+                    localSettings.Values[current] = batt;
+                    if(batt <= 10)
+                    {
+                        ToastHelper.ShowToast(sensorName[index] + "센서 배터리 잔량이 " + batt + "%입니다.");
+                    }
+                }
+            }
+            catch { }
+        }
     }
 
 

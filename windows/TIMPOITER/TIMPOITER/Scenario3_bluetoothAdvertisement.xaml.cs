@@ -50,14 +50,14 @@ namespace TIMPOITER
         private Guid TimpointerServiceUUID = BluetoothUuidHelper.FromShortId(0xffe0);
         private Guid TimpointerSerialCharacteristicUUID = BluetoothUuidHelper.FromShortId(0xffe1);
         private BluetoothLEAdvertisementReceivedEventArgs[] connectedDeviceInfo = new BluetoothLEAdvertisementReceivedEventArgs[2];
-
+        private long scanTime = 0;
         private long leftTime = 0;
         private long rightTime = 0;
 
         // For ValueChangeHandler
         // L : 0, R : 1
-        string[] jsonStr = new string[2];
-        string[] stringSeparators = new string[] { "\n" };
+        private string[] jsonStr = new string[2];
+        private string[] stringSeparators = new string[] { "\n" };
 
         private BluetoothLEAdvertisementWatcher watcher;
         private MainPage rootPage;
@@ -125,6 +125,7 @@ namespace TIMPOITER
             System.Diagnostics.Debug.WriteLine(watcher.Status);
             System.Diagnostics.Debug.WriteLine("Watcher 시작");
             isScanning = true;
+            scanTime = currentTimeMillis();
             // BLE연결을 async로 동시에 진행하면 하나면 정상연결되어 연결 시도 관리 스레드 생성.
             Task t = Task.Factory.StartNew(() => {
                 BLEConnecter();
@@ -185,6 +186,30 @@ namespace TIMPOITER
                         connectableDevice.RemoveAt(0);
                     }
                 }
+                else
+                {
+                    if(currentTimeMillis() - scanTime > 10000)
+                    {
+                        if (deviceConnected[0] == 0 && deviceConnected[1] == 0)
+                        {
+                            ToastHelper.ShowToast("센서를 찾을 수 없습니다. 다시 연결해주세요");
+                            watcher.Stop();
+                            return;
+                        }
+                        else if (deviceConnected[0] == 0)
+                        {
+                            ToastHelper.ShowToast("왼쪽센서를 찾을 수 없습니다. 센서를 확인해주세요");
+                            watcher.Stop();
+                            return;
+                        }
+                        else if (deviceConnected[0] == 0)
+                        {
+                            ToastHelper.ShowToast("오른쪽센서를 찾을 수 없습니다. 센서를 확인해주세요");
+                            watcher.Stop();
+                            return;
+                        }
+                    }
+                }
                 Task.Delay(100);
             }
             isScanning = false;
@@ -203,13 +228,25 @@ namespace TIMPOITER
             while (true)
             {
                 long current = currentTimeMillis();
-                if (current - leftTime > 1000)
+                if (current - leftTime > 1000 && deviceConnected[0] != 1)
                 {
                     ConnectBLEDevice(connectedDeviceInfo[0], 0);
+                    ToastHelper.ShowToast("왼쪽센서와 연결이 끊겼습니다. 재연결을 시도합니다.");
                 }
-                if (current - rightTime > 1000)
+                if (current - rightTime > 1000 && deviceConnected[1] != 1)
                 {
                     ConnectBLEDevice(connectedDeviceInfo[1], 1);
+                    ToastHelper.ShowToast("오른쪽센서와 연결이 끊겼습니다. 재연결을 시도합니다.");
+                }
+                if(current - leftTime > 5000)
+                {
+                    ToastHelper.ShowToast("왼쪽센서와 연결되지 않습니다. 센서를 확인해주세요");
+                    return;
+                }
+                if (current - rightTime > 5000)
+                {
+                    ToastHelper.ShowToast("오른쪽센서와 연결되지 않습니다. 센서를 확인해주세요");
+                    return;
                 }
             }
         }
@@ -271,45 +308,9 @@ namespace TIMPOITER
 
         private void ValueChangeHandlerL(GattCharacteristic characteristic, GattValueChangedEventArgs args)
         {
-            rightTime = currentTimeMillis();
+            leftTime = currentTimeMillis();
             int index = 0;
-            string str = "";
-            var reader = DataReader.FromBuffer(args.CharacteristicValue);
-            byte[] input = new byte[args.CharacteristicValue.Capacity];
-            reader.ReadBytes(input);
-            reader.DetachBuffer();
-            str = System.Text.Encoding.UTF8.GetString(input);
-            if (str.Contains("\n"))
-            {
-                string[] splitted = str.Split(stringSeparators, StringSplitOptions.None);
-
-                string toParse = jsonStr[index];
-                if (!splitted[0].Equals(""))
-                {
-                    // "\n"으로 스트링이 시작하면, index 0이 ""이므로 생략.
-                    toParse += splitted[0].Substring(0, splitted[0].Length);
-                }
-                Debug.WriteLine("L : " + toParse);
-                // 초기 시작시 JSON 앞부분을 받지 못하는경우가 있음.
-                try
-                {
-                    JsonArray root = JsonValue.Parse(toParse).GetArray();
-                    if (root.Count == 4)
-                    {
-                        leftData.Add(root);
-                    }
-                }
-                catch (Exception e)
-                {
-                    //Debug.WriteLine("L Parse error" + e.StackTrace);
-                    // Do Nothing
-                }
-                jsonStr[index] = splitted[1];
-            }
-            else
-            {
-                jsonStr[index] += str;
-            }
+            ParseGattValue(index, args);
 
         }
 
@@ -317,6 +318,12 @@ namespace TIMPOITER
         {
             rightTime = currentTimeMillis();
             int index = 1;
+            ParseGattValue(index, args);
+
+        }
+
+        private void ParseGattValue(int index, GattValueChangedEventArgs args)
+        {
             string str = "";
             var reader = DataReader.FromBuffer(args.CharacteristicValue);
             byte[] input = new byte[args.CharacteristicValue.Capacity];
@@ -333,16 +340,34 @@ namespace TIMPOITER
                     // "\n"으로 스트링이 시작하면, index 0이 ""이므로 생략.
                     toParse += splitted[0].Substring(0, splitted[0].Length);
                 }
-                Debug.WriteLine("R : " + toParse);
 
                 // 초기 시작시 JSON 앞부분을 받지 못하는경우가 있음.
                 try
                 {
-                    JsonArray root = JsonValue.Parse(toParse).GetArray();
-                    if (root.Count == 4)
+                    if (toParse.Contains("batt"))
                     {
-                        rightData.Add(root);
+                        string[] batt = toParse.Split(":");
+                        SettingValue.GetInstance().SetBattery(index, int.Parse(batt[1]));
                     }
+                    else
+                    {
+                        JsonArray root = JsonValue.Parse(toParse).GetArray();
+                        if (root.Count == 4)
+                        {
+                            List<JsonArray> array;
+                            if (index == 0)
+                            {
+                                array = leftData;
+                            }
+                            else
+                            {
+                                array = rightData;
+                            }
+
+                            array.Add(root);
+                        }
+                    }
+
                 }
                 catch (Exception e)
                 {
@@ -354,7 +379,6 @@ namespace TIMPOITER
             {
                 jsonStr[index] += str;
             }
-
         }
 
         private async void OnAdvertisementWatcherStopped(BluetoothLEAdvertisementWatcher watcher, BluetoothLEAdvertisementWatcherStoppedEventArgs eventArgs)
