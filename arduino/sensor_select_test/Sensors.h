@@ -3,6 +3,7 @@
 
 #include "Arduino.h"
 #include <VL53L0X.h>
+#include <SoftwareSerial.h>
 
 // Usage : Init(Sensors count, Sensors xshut pins...) then call int GetDistance()
 const int DISTANCE_THRESHOLD = 8190;
@@ -15,10 +16,10 @@ class Sensors{
     Sensors(int count, ...);
 
     // print to serial with data format.
-    void SendDistance(HardwareSerial *mySerial, String id, String distance);
+    void SendDistance(SoftwareSerial *mySerial, String id, int *distance);
 
     // return : average of distances from normally measured.
-    int GetDistance();
+    int GetDistance(int sendsorNum);
   private:
     void DisableAllSensor();
     void SetSensor(int num);

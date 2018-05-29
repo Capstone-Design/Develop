@@ -2,6 +2,7 @@
 #include "Sensors.h"
 #include <VL53L0X.h>
 #include <Wire.h>
+#include <SoftwareSerial.h>
 
 
 // ----- public
@@ -26,32 +27,25 @@ Sensors::Sensors(int count, ...){
   }
 }
 
-int Sensors::GetDistance(){
+int Sensors::GetDistance(int sendsorNum){
   int count = Sensors::sensorCount;
-  int distance;
-  int sum = 0;
-  int fineValue = 0;
-  for(int i=0; i< count; i++, distance = 0){
-    distance = Sensors::sensors[i].readRangeContinuousMillimeters();
-    if (!Sensors::sensors[i].timeoutOccurred() && distance < DISTANCE_THRESHOLD) {
-      sum += distance;
-      fineValue++;
-    }
-  }
-  // check fineValue == 0;
-  return sum/fineValue;
+  int distance = Sensors::sensors[sendsorNum].readRangeContinuousMillimeters();
+  return distance;
 }
 
-void Sensors::SendDistance(HardwareSerial *refSerial, String id, String distance){
-  //sensor,[arduino id]:[distance]\n
-  refSerial->print("distance,");
-  refSerial->print(id);
-  refSerial->print(":");
-  refSerial->println(distance);
+void Sensors::SendDistance(SoftwareSerial *refSerial, String id, int* distance){
+  // data format : [distance1, distance2...]\n
+  String data = "[";
+  for(int i = 0 ; i < Sensors::sensorCount-1; i++){
+    data += distance[i];
+    data += ",";
+  }
+  data += distance[Sensors::sensorCount-1];
+  data += "]\n";
+  refSerial->print(data);
 }
 
 // ----- private
-
 void Sensors::DisableAllSensor(){
   for(int i=0; i< Sensors::sensorCount; i++){
     pinMode(sensorXshutPins[i], OUTPUT);

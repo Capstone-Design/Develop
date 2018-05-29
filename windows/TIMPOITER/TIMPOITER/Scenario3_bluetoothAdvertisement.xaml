@@ -1,0 +1,46 @@
+﻿<Page
+    x:Class="TIMPOITER.Scenario3_bluetoothAdvertisement"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:TIMPOITER"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Canvas x:Name="myCanvas" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid x:Name="RootGrid" Margin="12,20,12,12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <StackPanel Margin="0,0,0,10">
+                <TextBlock TextWrapping="Wrap">
+                   블루투스 연결을 시도하고 연결 후 작업을 시작합니다.
+                </TextBlock>
+            </StackPanel>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollMode="Auto" VerticalScrollBarVisibility="Auto">
+                <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Button x:Name="RunButton" Grid.Row="0" Grid.Column="0" Content="Run" Margin="5,10,10,0" Click="RunButton_Click"/>
+                        <Button x:Name="StopButton" Grid.Row="0" Grid.Column="1" Content="Stop" Margin="5,10,10,0" Click="StopButton_Click"/>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+
+
+            <Border x:Name="ErrorBorder" Background="Red" Grid.Row="2"/>
+            <!--<TextBlock x:Name="StatusBlock" Grid.Row="2" Margin="12, 10, 12, 10" Visibility="Collapsed"/>-->
+        </Grid>
+    </Canvas>
+</Page>
