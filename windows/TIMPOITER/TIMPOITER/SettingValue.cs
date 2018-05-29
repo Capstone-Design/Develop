@@ -21,7 +21,6 @@ namespace TIMPOITER
         private static double[] calibration = new double[2];
         private static string[] sensorName = {"왼쪽", "오른쪽" };
 
-        //arduino = new [2];
         //private int firstStart;
 
         private SettingValue()
@@ -48,12 +47,13 @@ namespace TIMPOITER
         }
 
         //해상도가 변경되었을 때의 설정 변경
-        public void ResolutionChanged(int x, int y)
+        public int[] ResolutionChanged(int x, int y)
         {
             resolution[0] = x;
             resolution[1] = y;
             localSettings.Values["resolutionW"] = resolution[0];
             localSettings.Values["resolutionH"] = resolution[1];
+            return resolution;
         }
 
         //디스플레이 사이즈 저장 
@@ -73,20 +73,13 @@ namespace TIMPOITER
         // 해상도 가져오기 및 저장 
         public int[] GetResolution()
         {
-            //resolution[0] = (int)DisplayInformation.GetForCurrentView().ScreenWidthInRawPixels;
-            //resolution[1] = (int)DisplayInformation.GetForCurrentView().ScreenHeightInRawPixels;
-            resolution[0] = 1920;
-            resolution[1] = 1080;
+            resolution[0] = (int)DisplayInformation.GetForCurrentView().ScreenWidthInRawPixels;
+            resolution[1] = (int)DisplayInformation.GetForCurrentView().ScreenHeightInRawPixels;
             localSettings.Values["resolutionW"] = resolution[0];
             localSettings.Values["resolutionH"] = resolution[1];
 
             return resolution;
         }
-
-        /*public int* GetBattery()
-        {
-            return &; 
-        }*/
 
         public void SetBattery(int index, int batt)
         {
@@ -114,6 +107,4 @@ namespace TIMPOITER
             catch { }
         }
     }
-
-
 }

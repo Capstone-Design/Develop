@@ -33,7 +33,8 @@ namespace TIMPOITER
         // Connect to HM-10 Default Ble
         // index 0 = left, 1 = right
         private readonly DateTime Jan1st1970 = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
+        public static Scenario3_bluetoothAdvertisement Current;
+     
         private long currentTimeMillis()
         {
             return (long)(DateTime.UtcNow - Jan1st1970).TotalMilliseconds;
@@ -51,6 +52,7 @@ namespace TIMPOITER
         private Guid TimpointerSerialCharacteristicUUID = BluetoothUuidHelper.FromShortId(0xffe1);
         private BluetoothLEAdvertisementReceivedEventArgs[] connectedDeviceInfo = new BluetoothLEAdvertisementReceivedEventArgs[2];
         private long scanTime = 0;
+
         private long leftTime = 0;
         private long rightTime = 0;
 
@@ -61,11 +63,16 @@ namespace TIMPOITER
 
         private BluetoothLEAdvertisementWatcher watcher;
         private MainPage rootPage;
+        string[] jsonStr = new string[2];
+        string[] stringSeparators = new string[] { "\n" };
+
+        private BluetoothLEAdvertisementWatcher watcher;
 
         public Scenario3_bluetoothAdvertisement()
         {
             this.InitializeComponent();
 
+            Current = this;
             // Create and initialize a new watcher instance.
             watcher = new BluetoothLEAdvertisementWatcher();
             watcher.AdvertisementFilter.Advertisement.ServiceUuids.Add(TimpointerServiceUUID);
@@ -120,12 +127,16 @@ namespace TIMPOITER
 
         private void RunButton_Click(object sender, RoutedEventArgs e)
         {
+	    reSetting();
+        }
+
+        public void reSetting()
+        {
             watcher.Start();
             System.Threading.Tasks.Task.Delay(2000);
             System.Diagnostics.Debug.WriteLine(watcher.Status);
             System.Diagnostics.Debug.WriteLine("Watcher 시작");
             isScanning = true;
-            scanTime = currentTimeMillis();
             // BLE연결을 async로 동시에 진행하면 하나면 정상연결되어 연결 시도 관리 스레드 생성.
             Task t = Task.Factory.StartNew(() => {
                 BLEConnecter();
@@ -311,7 +322,6 @@ namespace TIMPOITER
             leftTime = currentTimeMillis();
             int index = 0;
             ParseGattValue(index, args);
-
         }
 
         private void ValueChangeHandlerR(GattCharacteristic characteristic, GattValueChangedEventArgs args)

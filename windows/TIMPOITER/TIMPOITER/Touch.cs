@@ -60,8 +60,8 @@ namespace TIMPOITER
                 instance = new Touch();
             }
 
-            instance.w = SettingValue.GetInstance().GetResolution()[0];
-            instance.h = SettingValue.GetInstance().GetResolution()[1];
+            instance.w = SettingValue.GetInstance().GetResolutions()[0];
+            instance.h = SettingValue.GetInstance().GetResolutions()[1];
             instance.screenW = SettingValue.GetInstance().GetScreenSize()[0];
             instance.screenH = SettingValue.GetInstance().GetScreenSize()[1];
             instance.SetSensorsMax();
@@ -152,6 +152,11 @@ namespace TIMPOITER
                             rightData.RemoveAt(0);
                             double leftDistance = Calib(left, 0);
                             double rightDistance = Calib(right, 1);
+                            if (leftDistance + rightDistance < instance.screenW)
+                            {
+                                ToastHelper.ShowToast("비정상적인 입력 감지");
+                                continue;
+                            }
                             Point point;
                             if (leftDistance >= 0 && rightDistance >= 0)
                             {

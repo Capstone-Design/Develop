@@ -42,6 +42,7 @@ namespace TIMPOITER
             SettingValue a = SettingValue.GetInstance();
             int[] sc = {Convert.ToInt32(screensize_x.Text), Convert.ToInt32(screensize_y.Text)};
             a.SetScreenSize(sc);
+            ToastHelper.ShowToast("화면크기 적용완료");
         }
     }
 }

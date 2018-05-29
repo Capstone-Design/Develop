@@ -38,6 +38,10 @@ namespace SystrayComponent
         {
             localSettings = ApplicationData.Current.LocalSettings;
             MenuItem openMenuItem = new MenuItem("설정", new EventHandler(OpenSetting));
+<<<<<<< HEAD
+=======
+            MenuItem settingMenuItem = new MenuItem("자동설정", new EventHandler(autoSetting));
+>>>>>>> pgh
             MenuItem batteryMenuItem = new MenuItem("모듈 배터리 잔량 확인", new EventHandler(batteryConfirm));
             MenuItem exitMenuItem = new MenuItem("종료", new EventHandler(Exit));
             openMenuItem.DefaultItem = true;
@@ -45,7 +49,11 @@ namespace SystrayComponent
             notifyIcon = new NotifyIcon();
             notifyIcon.DoubleClick += new EventHandler(OpenApp);
             notifyIcon.Icon = SystrayComponent.Properties.Resources.baseline_touch_app_black_48_dqL_icon;
+<<<<<<< HEAD
             notifyIcon.ContextMenu = new ContextMenu(new MenuItem[]{ openMenuItem, batteryMenuItem, exitMenuItem });
+=======
+            notifyIcon.ContextMenu = new ContextMenu(new MenuItem[]{ openMenuItem, settingMenuItem, batteryMenuItem, exitMenuItem });
+>>>>>>> pgh
             notifyIcon.Visible = true;
             SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
 
@@ -67,6 +75,18 @@ namespace SystrayComponent
             await SendToUWP(message);
         }
 
+<<<<<<< HEAD
+=======
+        private async void autoSetting(object sender, EventArgs e)
+        {
+            int a = (int)System.Windows.Forms.Screen.PrimaryScreen.Bounds.Width * 10000 + (int)System.Windows.Forms.Screen.PrimaryScreen.Bounds.Height;
+            ValueSet message = new ValueSet();
+            message.Add("autoSetting", a.ToString());
+
+            await SendToUWP(message);
+        }
+
+>>>>>>> pgh
         private async void batteryConfirm(object sender, EventArgs e)
         {
             ValueSet message = new ValueSet();
