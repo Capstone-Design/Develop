@@ -1,2 +1,0 @@
-MainPackage=C:\Users\minjae\Documents\Visual Studio 2017\Projects\TIMPOITER\TIMPOITER\bin\x64\Release\TIMPOITER_1.0.2.0_x64.appx
-SymbolPackage=C:\Users\minjae\OneDrive\TIMPOITER_1.0.2.0_Test\TIMPOITER_1.0.2.0_x64.appxsym
