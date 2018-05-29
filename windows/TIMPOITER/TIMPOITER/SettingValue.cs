@@ -83,6 +83,11 @@ namespace TIMPOITER
             return resolution;
         }
 
+        public int[] GetResolutions()
+        {
+            return resolution;
+        }
+
         /*public int* GetBattery()
         {
             return &; 
