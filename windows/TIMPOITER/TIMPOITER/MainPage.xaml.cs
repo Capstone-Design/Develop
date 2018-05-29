@@ -11,6 +11,10 @@ using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Navigation;
 using Windows.UI.ViewManagement;
+using Windows.Storage;
+using Windows.Graphics.Display;
+
+
 namespace TIMPOITER
 {
     /// <summary>
@@ -26,7 +30,23 @@ namespace TIMPOITER
             this.InitializeComponent();
             Current = this;
             SampleTitle.Text = FEATURE_NAME;
-       
+            ApplicationDataContainer localSettings = null;
+            localSettings = ApplicationData.Current.LocalSettings;
+
+            // 첫 실행시  자동 설정 
+            if (localSettings == null)
+            {
+                int[] resolution = SettingValue.GetInstance().GetResolution();
+                double actualSizeInInches = Double.MaxValue;
+                if (DisplayInformation.GetForCurrentView().DiagonalSizeInInches.HasValue)
+                    actualSizeInInches = DisplayInformation.GetForCurrentView().DiagonalSizeInInches.Value;
+                double d = resolution[0] ^ 2 + resolution[1] ^ 2;
+                d = actualSizeInInches / Math.Sqrt(d);
+                int[] a = { (int)(d * resolution[0]), (int)(d * resolution[1])};
+                SettingValue.GetInstance().SetScreenSize(a);
+            }
+
+
 
             SystemNavigationManagerPreview mgr =
                 SystemNavigationManagerPreview.GetForCurrentView();

@@ -48,12 +48,14 @@ namespace TIMPOITER
         }
 
         //해상도가 변경되었을 때의 설정 변경
-        public void ResolutionChanged(int x, int y)
+        public int[] ResolutionChanged(int x, int y)
         {
             resolution[0] = x;
             resolution[1] = y;
             localSettings.Values["resolutionW"] = resolution[0];
             localSettings.Values["resolutionH"] = resolution[1];
+
+            return resolution;
         }
 
         //디스플레이 사이즈 저장 

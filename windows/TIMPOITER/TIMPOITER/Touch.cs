@@ -49,7 +49,7 @@ namespace TIMPOITER
         public Touch()
         {
             inputInjector = InputInjector.TryCreate();
-            inputInjector.InitializeTouchInjection(InjectedInputVisualizationMode.Default);
+            inputInjector.InitializePenInjection(InjectedInputVisualizationMode.Default);
            
         }
 
@@ -128,10 +128,11 @@ namespace TIMPOITER
         }
 
 
-        public void ConsumeTouch(ref List<JsonArray> leftData, ref List<JsonArray> rightData)
+        public void ConsumeTouch(ref List<JsonArray> leftData, ref List<JsonArray> rightData, ref bool isScanning)
         {
             while (true)
             {
+                if (isScanning) return;
                 if (currentTimeMillis() - preInputTime > 400 && autoDetached == false)
                 {
                     autoDetached = true;
@@ -192,13 +193,13 @@ namespace TIMPOITER
                     else
                     {
                         leftData.Clear();
-                        Task.Delay(200);
+                        Task.Delay(300);
                     }
                 }
                 else
                 {
                     rightData.Clear();
-                    Task.Delay(200);
+                    Task.Delay(300);
                 }
             }
         }

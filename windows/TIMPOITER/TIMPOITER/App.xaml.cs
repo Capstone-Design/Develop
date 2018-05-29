@@ -19,6 +19,7 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 using Windows.UI.ViewManagement;
+using Windows.Graphics.Display;
 
 
 namespace TIMPOITER
@@ -106,6 +107,23 @@ namespace TIMPOITER
 
             }
 
+            if (args.Request.Message.ContainsKey("autoSetting"))
+            {
+                object message = null;
+                args.Request.Message.TryGetValue("autoSetting", out message);
+                int a = Convert.ToInt32(message);
+                int[] resolution = SettingValue.GetInstance().ResolutionChanged(a / 10000, a % 10000);
+                double actualSizeInInches = Double.MaxValue;
+                if (DisplayInformation.GetForCurrentView().DiagonalSizeInInches.HasValue)
+                    actualSizeInInches = DisplayInformation.GetForCurrentView().DiagonalSizeInInches.Value;
+                double d = resolution[0] ^ 2 + resolution[1] ^ 2;
+                d = actualSizeInInches / Math.Sqrt(d);
+                int[] size = { (int)(d * resolution[0]), (int)(d * resolution[1]) };
+                SettingValue.GetInstance().SetScreenSize(size);
+
+                Scenario3_bluetoothAdvertisement.Current.reSetting();
+            }
+
             if (args.Request.Message.ContainsKey("openSetting"))
             {
                 if (App.IsForeground)
@@ -177,6 +195,8 @@ namespace TIMPOITER
                 // 현재 창이 활성 창인지 확인
                 Window.Current.Activate();
             }
+
+
         }
 
         /// <summary>

@@ -33,6 +33,8 @@ namespace TIMPOITER
         // Connect to HM-10 Default Ble
         // index 0 = left, 1 = right
         private readonly DateTime Jan1st1970 = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        public static Scenario3_bluetoothAdvertisement Current;
+     
 
         private long currentTimeMillis()
         {
@@ -46,9 +48,13 @@ namespace TIMPOITER
         private List<JsonArray> leftData = new List<JsonArray>();
         private List<JsonArray> rightData = new List<JsonArray>();
         private List<KeyValuePair<int, BluetoothLEAdvertisementReceivedEventArgs>> connectableDevice = new List<KeyValuePair<int, BluetoothLEAdvertisementReceivedEventArgs>>();
-
+        private bool isScanning = false;
         private Guid TimpointerServiceUUID = BluetoothUuidHelper.FromShortId(0xffe0);
         private Guid TimpointerSerialCharacteristicUUID = BluetoothUuidHelper.FromShortId(0xffe1);
+        private BluetoothLEAdvertisementReceivedEventArgs[] connectedDeviceInfo = new BluetoothLEAdvertisementReceivedEventArgs[2];
+
+        private long leftTime = 0;
+        private long rightTime = 0;
 
         // For ValueChangeHandler
         // L : 0, R : 1
@@ -56,12 +62,11 @@ namespace TIMPOITER
         string[] stringSeparators = new string[] { "\n" };
 
         private BluetoothLEAdvertisementWatcher watcher;
-        private MainPage rootPage;
 
         public Scenario3_bluetoothAdvertisement()
         {
             this.InitializeComponent();
-
+            Current = this;
             // Create and initialize a new watcher instance.
             watcher = new BluetoothLEAdvertisementWatcher();
             watcher.AdvertisementFilter.Advertisement.ServiceUuids.Add(TimpointerServiceUUID);
@@ -73,8 +78,6 @@ namespace TIMPOITER
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
-            rootPage = MainPage.Current;
-
             watcher.Received += OnAdvertisementReceived;
 
             watcher.Stopped += OnAdvertisementWatcherStopped;
@@ -120,6 +123,20 @@ namespace TIMPOITER
             System.Threading.Tasks.Task.Delay(2000);
             System.Diagnostics.Debug.WriteLine(watcher.Status);
             System.Diagnostics.Debug.WriteLine("Watcher 시작");
+            isScanning = true;
+            // BLE연결을 async로 동시에 진행하면 하나면 정상연결되어 연결 시도 관리 스레드 생성.
+            Task t = Task.Factory.StartNew(() => {
+                BLEConnecter();
+            });
+        }
+
+        public void reSetting()
+        {
+            watcher.Start();
+            System.Threading.Tasks.Task.Delay(2000);
+            System.Diagnostics.Debug.WriteLine(watcher.Status);
+            System.Diagnostics.Debug.WriteLine("Watcher 시작");
+            isScanning = true;
             // BLE연결을 async로 동시에 진행하면 하나면 정상연결되어 연결 시도 관리 스레드 생성.
             Task t = Task.Factory.StartNew(() => {
                 BLEConnecter();
@@ -129,6 +146,7 @@ namespace TIMPOITER
         private void StopButton_Click(object sender, RoutedEventArgs e)
         {
             watcher.Stop();
+            isScanning = false;
             System.Diagnostics.Debug.WriteLine("Watcher 중지");
 
             if (characteristics[0] != null)
@@ -150,6 +168,7 @@ namespace TIMPOITER
 
         private void OnAdvertisementReceived(BluetoothLEAdvertisementWatcher watcher, BluetoothLEAdvertisementReceivedEventArgs eventArgs)
         {
+            
             int index;
             for (index = 0; index < DEVICE_MAC.Length; index++)
             {
@@ -165,7 +184,7 @@ namespace TIMPOITER
 
         private void BLEConnecter()
         {
-            while (!(deviceConnected[0] == 2 && deviceConnected[1] == 2))
+            while (!(deviceConnected[0] == 2 && deviceConnected[1] == 2) && isScanning == true)
             {
                 if (connectableDevice.Count > 0)
                 {
@@ -180,6 +199,7 @@ namespace TIMPOITER
                 }
                 Task.Delay(100);
             }
+            isScanning = false;
             watcher.Stop();
             if (deviceConnected[0] == 2 && deviceConnected[1] == 2)
             {
@@ -189,8 +209,20 @@ namespace TIMPOITER
                 ToastHelper.ShowToast("모듈 연결 완료");
             
                 Task t = Task.Factory.StartNew(() => {
-                    Touch.GetInstance().ConsumeTouch(ref leftData, ref rightData);
+                    Touch.GetInstance().ConsumeTouch(ref leftData, ref rightData, ref isScanning);
                 });
+            }
+            while (true)
+            {
+                long current = currentTimeMillis();
+                if (current - leftTime > 1000)
+                {
+                    ConnectBLEDevice(connectedDeviceInfo[0], 0);
+                }
+                if (current - rightTime > 1000)
+                {
+                    ConnectBLEDevice(connectedDeviceInfo[1], 1);
+                }
             }
         }
 
@@ -216,6 +248,9 @@ namespace TIMPOITER
                             {
                                 // 처음 연결시 데이터를 보내 아두이노에서 시리얼 개통을함.
                                 deviceConnected[index] = 2;
+                                //characteristics[index].Service.Session.MaintainConnection = true;
+                                connectedDeviceInfo[index] = eventArgs;
+                                //Debug.WriteLine(characteristics[index].Service.Session.SessionStatus);
                                 return;
                             }
                         }
@@ -248,6 +283,7 @@ namespace TIMPOITER
 
         private void ValueChangeHandlerL(GattCharacteristic characteristic, GattValueChangedEventArgs args)
         {
+            rightTime = currentTimeMillis();
             int index = 0;
             string str = "";
             var reader = DataReader.FromBuffer(args.CharacteristicValue);
@@ -291,6 +327,7 @@ namespace TIMPOITER
 
         private void ValueChangeHandlerR(GattCharacteristic characteristic, GattValueChangedEventArgs args)
         {
+            rightTime = currentTimeMillis();
             int index = 1;
             string str = "";
             var reader = DataReader.FromBuffer(args.CharacteristicValue);
